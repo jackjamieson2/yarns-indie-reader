@@ -24,7 +24,31 @@
     $("#jjreader-addSite-findFeeds").on("click", function() {
      	
      	var new_siteURL = $("input[name=jjreader-siteurl]").val();
-	
+     	
+     	if (new_siteURL) {
+        	$.ajax({
+				url : jjreader_ajax.ajax_url,
+				type : 'post',
+				data : {
+					action : 'jjreader_findFeeds',
+					siteurl: new_siteURL,
+				},
+				success : function( response ) {
+
+				 	console.log(response);
+				 	var json_response = JSON.parse(response);
+					console.log(json_response);
+					$.each(json_response, function(i,item){
+						console.log(json_response[i].type);
+						console.log(json_response[i].data);
+					});
+				}
+			});
+           
+        } else {
+            jjreader_error("You must enter a Feed URL. "+ new_feedURL + " failed.", $(this));
+        }
+		/*
      	$.ajax({
 			url: new_siteURL,
 			success: function( data ) {
@@ -39,6 +63,7 @@
 			alert( 'Your home page has ' + $(data).find('div').length + ' div elements.');
 			}
 		})
+		*/
      	
     });
 

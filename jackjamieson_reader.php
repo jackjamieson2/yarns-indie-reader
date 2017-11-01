@@ -208,11 +208,8 @@ add_shortcode('jjreader_page', 'jjreader_page_shortcode');
 
 // The Following page, visible on the front end
 function jjreader_page(){
-	
 	?> 
-	
 	<div class="reader-settings">
-	
 	<?php
 	
 	//Check if the user is logged in with sufficient privileges to EDIT the page
@@ -322,8 +319,6 @@ function add_reader_post($permalink,$title,$content,$authorname='',$authorurl=''
 
 }
 
-// Redoing the add subscription function
-
 // Add a new subscription
 add_action( 'wp_ajax_jjreader_new_subscription', 'jjreader_new_subscription' );
 //add_action( 'wp_ajax_read_me_later', array( $this, 'jjreader_new_subscription' ) );
@@ -333,15 +328,9 @@ function jjreader_new_subscription($siteurl, $feedurl, $sitetitle, $feedtype){
 	$feedurl = $_POST['feedurl'];
 	$sitetitle = $_POST['sitetitle'];
 	$feedtype = $_POST['feedtype'];
-	
-	
 	jjreader_log("adding subscription: ". $feedurl. " @ ". $sitetitle);
 
-	
 	global $wpdb;
-	/*if($time < 1){
-		$time = time();
-	}*/
 	$table_name = $wpdb->prefix . "jjreader_following";
 	if($wpdb->get_var( "SELECT COUNT(*) FROM ".$table_name." WHERE feedurl LIKE \"".$feedurl."\";")<1){
 		jjreader_log("no duplicate found");
@@ -353,9 +342,7 @@ function jjreader_new_subscription($siteurl, $feedurl, $sitetitle, $feedtype){
 				'sitetitle'=> $sitetitle,
 				'feedtype' => $feedtype,
 			 ) );
-
 		if($rows_affected == false){
-		
 			jjreader_log("Could not insert subscription info into database.");
 			return "Could not insert subscription info into database.";
 			die("Could not insert subscription info into database.");
@@ -367,6 +354,51 @@ function jjreader_new_subscription($siteurl, $feedurl, $sitetitle, $feedtype){
 		jjreader_log("This subscription already exists");
 		return "This subscription already exists";
 	}
+	
+	wp_die(); // this is required to terminate immediately and return a proper response
+}
+
+
+// Add a new subscription
+add_action( 'wp_ajax_jjreader_findFeeds', 'jjreader_findFeeds' );
+//add_action( 'wp_ajax_read_me_later', array( $this, 'jjreader_new_subscription' ) );
+function jjreader_findFeeds($siteurl){
+	$siteurl = $_POST['siteurl'];
+	jjreader_log("Searching for feeds and site title at ". $siteurl);
+
+
+	$html = file_get_contents($siteurl); //get the html returned from the following url
+
+	$dom = new DOMDocument();
+
+	libxml_use_internal_errors(TRUE); //disable libxml errors
+
+	if(!empty($html)){ //if any html is actually returned
+
+		$dom->loadHTML($html);
+		
+		$thetitle = $dom->getElementsByTagName("title");
+		
+		//echo $thetitle[0]->nodeValue;
+		$returnArray[] = array("type"=>"title", "data"=>$thetitle[0]->nodeValue);
+	
+		$website_links = $dom->getElementsByTagName("link");
+		if($website_links->length > 0){
+			foreach($website_links as $row){
+				if ($row->getAttribute("type")=='application/rss+xml'||
+					$row->getAttribute("type")=='application/atom+xml'||
+					$row->getAttribute("type")=='text/xml') {
+					$returnArray[] = array("type"=>$row->getAttribute("type"), "data"=>$row->getAttribute("href"));
+				}
+			}
+			// Also here check for hfeed in the actual html
+		}
+		
+	
+		
+		echo json_encode($returnArray);
+	}
+
 	
 	wp_die(); // this is required to terminate immediately and return a proper response
 }
