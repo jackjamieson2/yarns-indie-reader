@@ -249,6 +249,7 @@ function jjreader_subscription_editor(){
         <label for="jjreader-siteurl">Site URL </label><input type="text" name="jjreader-siteurl" value="" size="30"><br>
         <button id="jjreader-addSite-findFeeds" class="ui-button ui-corner-all ui-widget">Find feeds & title</button>
 		<br><br>
+		<form class="jjreader-feedpicker jjreader-hidden "></form
 		<label for="jjreader-feedurl">Feed URL </label><input type="text" name="jjreader-feedurl" value="" size="30"><br>
 		<label for="jjreader-sitetitle">Site Title </label><input type="text" name="jjreader-sitetitle" value="" size="30"><br>
 		<button id="jjreader-addSite-submit" class="ui-button ui-corner-all ui-widget">Submit</button>
@@ -391,7 +392,8 @@ function jjreader_findFeeds($siteurl){
 					$returnArray[] = array("type"=>$row->getAttribute("type"), "data"=>$row->getAttribute("href"));
 				}
 			}
-			// Also here check for hfeed in the actual html
+			// Also here check for h-feed in the actual html
+			// If h-feed is found return (type="h-feed", data= "site url?"
 		}
 		
 	

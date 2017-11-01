@@ -20,8 +20,25 @@
     });
     
     
+    //Update feed url when radio button is clicked
+
+
+	$("#jjreader-addSite-form").on("click","input[name=jjreader_feed_option]", function() {
+		console.log("test");
+		$("input[name=jjreader-feedurl]").val($(this).val());	
+	});
+
+    
+        
 	// Find feeds based on site url 
     $("#jjreader-addSite-findFeeds").on("click", function() {
+     	
+     	// Clear any existing values for feed url and site title
+     	$("input[name=jjreader-sitetitle]").val("");	
+     	$("input[name=jjreader-feedurl]").val("");	
+     	$('.jjreader_feedpicker').empty();
+     	
+     	
      	
      	var new_siteURL = $("input[name=jjreader-siteurl]").val();
      	
@@ -39,8 +56,41 @@
 				 	var json_response = JSON.parse(response);
 					console.log(json_response);
 					$.each(json_response, function(i,item){
+						var r_type = json_response[i].type;
+						var r_data = json_response[i].data;
+						if (r_type=="title"){
+							// Set the sitetitle to the title of the site if found
+							$("input[name=jjreader-sitetitle]").val(r_data);	
+						} 
+						else {
+							// The only other response type is a feed (either rss or h-feed)
+							
+							// Create radio buttons to choose between feed options	
+							
+							var radio_name = "jjreader_feedpicker_" + i;
+							
+							var radio_btn = '<input type="radio" name="jjreader_feed_option" value="'+r_data+'" id="'+radio_name+'" checked>';
+							radio_btn += ' <label for="'+radio_name+'">'+r_data+'</label><br>';
+
+							$('.jjreader_feedpicker').append(radio_btn);
+
+							// Automatically set the feedurl to the first returned feed
+							/*if ($('.jjreader_feedpicker input').length ==1){
+								$("input[name=jjreader-feedurl]").val(r_data);	
+							}*/
+							
+						}
 						console.log(json_response[i].type);
 						console.log(json_response[i].data);
+						// If >1 feeds were found, show the radio buttons
+						if ($('.jjreader_feedpicker input').length >1){
+							$('.jjreader_feedpicker').show();
+							// Check the first radio button
+							$('.jjreader_feedpicker input').first().trigger("click");
+
+							//$('.jjreader_feedpicker input').first().prop("checked", true).trigger("click");
+
+						}
 					});
 				}
 			});

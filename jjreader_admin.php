@@ -32,7 +32,7 @@
 
     
  
-    <form name="jjreader_form" method="post" action="<?php echo str_replace( '%7E', '~', $_SERVER['REQUEST_URI']); ?>">
+    <form name="jjreader-form" method="post" action="<?php echo str_replace( '%7E', '~', $_SERVER['REQUEST_URI']); ?>">
         <input type="hidden" name="jjreader_hidden" value="Y">
         <?php    echo "<h4>" . __( 'Feed location:', 'jjreader_feedlocation' ) . "</h4>"; ?>
         <p><?php _e("'Following' page: " ); ?><?php echo site_url(); ?>/ <input type="text" name="jjreader_feedlocation" value="<?php echo $old_feedlocation; ?>" size="30"><?php _e(" e.g., following" ); ?></p>
