@@ -1,0 +1,8 @@
+/* CSS for jjreader
+*/
+
+#jjreader-addSite-form label {
+	min-width: 10%;
+	width:75px;
+	display:inline-block;
+}
