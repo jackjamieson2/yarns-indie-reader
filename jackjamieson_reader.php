@@ -324,13 +324,12 @@ function add_reader_post($permalink,$title,$content,$authorname='',$authorurl=''
 add_action( 'wp_ajax_jjreader_new_subscription', 'jjreader_new_subscription' );
 //add_action( 'wp_ajax_read_me_later', array( $this, 'jjreader_new_subscription' ) );
 function jjreader_new_subscription($siteurl, $feedurl, $sitetitle, $feedtype){
-	echo "test";
+	jjreader_log("adding a new subscription");
 	$siteurl = $_POST['siteurl'];
 	$feedurl = $_POST['feedurl'];
 	$sitetitle = $_POST['sitetitle'];
 	$feedtype = $_POST['feedtype'];
 	jjreader_log("adding subscription: ". $feedurl. " @ ". $sitetitle);
-
 	global $wpdb;
 	$table_name = $wpdb->prefix . "jjreader_following";
 	if($wpdb->get_var( "SELECT COUNT(*) FROM ".$table_name." WHERE feedurl LIKE \"".$feedurl."\";")<1){
@@ -345,15 +344,15 @@ function jjreader_new_subscription($siteurl, $feedurl, $sitetitle, $feedtype){
 			 ) );
 		if($rows_affected == false){
 			jjreader_log("Could not insert subscription info into database.");
-			return "Could not insert subscription info into database.";
+			echo "Could not insert subscription info into database.";
 			die("Could not insert subscription info into database.");
 		}else{
 			jjreader_log("Success! Added subscription: ". $feedurl. " @ ". $sitetitle);
-			return "Success! Added subscription: ". $feedurl. " @ ". $sitetitle;
+			echo "Success! Added subscription: ". $feedurl. " @ ". $sitetitle;
 		}
 	}else{
 		jjreader_log("This subscription already exists");
-		return "This subscription already exists";
+		echo "You are already subscribed to " . $feedurl;
 	}
 	
 	wp_die(); // this is required to terminate immediately and return a proper response
