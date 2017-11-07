@@ -30,8 +30,6 @@
 
 defined( 'ABSPATH' ) or die( 'No script kiddies please!' );
 
-
-
 global $jjreader_db_version;
 $jjreader_db_version = "1.0a";
 
@@ -72,30 +70,31 @@ function initial_setup_admin_notice() {
     </div>
     <?php
 }
+	
+function jjreader_install() {
+	// Activates the plugin and checks for compatible version of WordPress 
+	if ( version_compare( get_bloginfo( 'version' ), '2.9', '<' ) ) {
+		deactivate_plugins ( basename( __FILE__ ));     // Deactivate plugin
+		wp_die( "This plugin requires WordPress version 2.9 or higher." );
+	}
+		/*
+		Determine wordpress version requirements using:
+		https://de.wpseek.com/pluginfilecheck/
+		*/ 
 
-
-/* Hook to display admin notice */ 
-add_action( 'admin_notices', 'initial_setup_admin_notice' );
+	//Set up cron job to check for posts
+	if ( !wp_next_scheduled( 'jjreader_generate_hook' ) ) {            
+		wp_schedule_event( time(), 'fivemins', 'jjreader_generate_hook' );
+	}
+	//Flush rewrite rules - see: https://codex.wordpress.org/Function_Reference/flush_rewrite_rules
+	flush_rewrite_rules( false );
+}
 	
 
 /* Create a new table for the reader settings */ 
 function jjreader_create_tables() {
 	global $wpdb;
 	global $jjreader_db_version;
-
-	/*
-	// Create settings table
-	$table_settings = $wpdb->prefix . "jjreader_settings";
-
-	$sql = "CREATE TABLE " . $table_settings . " (
-		key text DEFAULT '' NOT NULL,
-		value text DEFAULT '' NOT NULL
-	);";
-
-	require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
-	dbDelta($sql);
-	*/ 
-	
 	
 	// Create table to store log
 	$table_log = $wpdb->prefix . "jjreader_log";
@@ -244,6 +243,10 @@ function jjreader_subscription_viewer(){
 // Show interface for adding/removing/editing subscriptions
 function jjreader_subscription_editor(){
 	?>
+	
+	<button id="jjreader-button-refresh" class="ui-state-default ui-corner-all" title=".ui-icon-arrowrefresh-1-e"><span class="ui-icon ui-icon-arrowrefresh-1-e"></span></button>
+	
+
 	<div id="jjreader-addSite-form" method="post" action="<?php echo str_replace( '%7E', '~', $_SERVER['REQUEST_URI']); ?>">
 		<strong>Add a subscription</strong><br>
         <label for="jjreader-siteurl">Site URL </label><input type="text" name="jjreader-siteurl" value="" size="30"><br>
@@ -284,16 +287,20 @@ function jjreader_log($message){
 
 }
 
-
+/*
+** Add a post to the jjreader_posts table in the database
+*/
 function add_reader_post($permalink,$title,$content,$authorname='',$authorurl='',$time=0,$avurl=''){
-	reader_log("adding post: ".$permalink.": ".$title);
+	jjreader_log("adding post: ".$permalink.": ".$title);
 	global $wpdb;
 	if($time < 1){
 		$time = time();
 	}
+	// Add the post (if it doesn't already exist)
 	$table_name = $wpdb->prefix . "jjreader_posts";
 	if($wpdb->get_var( "SELECT COUNT(*) FROM ".$table_name." WHERE permalink LIKE \"".$permalink."\";")<1){
-		jjreader_log("no duplicate found");
+		//jjreader_log("no duplicate found");
+		//jjreader_log("title->".$title." / permalink->".$permalink." / content->".$content." / authorname->".$authorname);
 		$rows_affected = $wpdb->insert( $table_name,
 			array(
 				'permalink' => $permalink,
@@ -301,23 +308,20 @@ function add_reader_post($permalink,$title,$content,$authorname='',$authorurl=''
 				'content' => $content,
 				'authorname' => $authorname,
 				'authorurl' => $authorurl,
-				'time' => date( 'Y-m-d H:i:s', $time),
+				'date' => date( 'Y-m-d H:i:s', $time),
 				'authoravurl' => $avurl,
 				'viewed' =>false,
-				'type' => "Post",
+				'posttype' => "post" // This will need to be changed for events and other special kinds of posts
 			 ) );
-
 		if($rows_affected == false){
-		
-			jjreader_log("could not insert whisper into database!");
-			die("could not insert whisper into database!");
+			jjreader_log("could not insert post into database!");
+			die("could not insert post into database!");
 		}else{
 			jjreader_log("added ".$title." from ".$authorurl);
 		}
 	}else{
 		jjreader_log("duplicate detected");
 	}
-
 }
 
 // Add a new subscription
@@ -330,8 +334,10 @@ function jjreader_new_subscription($siteurl, $feedurl, $sitetitle, $feedtype){
 	$sitetitle = $_POST['sitetitle'];
 	$feedtype = $_POST['feedtype'];
 	jjreader_log("adding subscription: ". $feedurl. " @ ". $sitetitle);
+	
 	global $wpdb;
 	$table_name = $wpdb->prefix . "jjreader_following";
+	// Check if the site is already subscribed
 	if($wpdb->get_var( "SELECT COUNT(*) FROM ".$table_name." WHERE feedurl LIKE \"".$feedurl."\";")<1){
 		jjreader_log("no duplicate found");
 		$rows_affected = $wpdb->insert( $table_name,
@@ -354,34 +360,26 @@ function jjreader_new_subscription($siteurl, $feedurl, $sitetitle, $feedtype){
 		jjreader_log("This subscription already exists");
 		echo "You are already subscribed to " . $feedurl;
 	}
-	
 	wp_die(); // this is required to terminate immediately and return a proper response
 }
 
-
-// Add a new subscription
+/*
+** Identify and return feeds at a given url 
+*/
 add_action( 'wp_ajax_jjreader_findFeeds', 'jjreader_findFeeds' );
 //add_action( 'wp_ajax_read_me_later', array( $this, 'jjreader_new_subscription' ) );
 function jjreader_findFeeds($siteurl){
 	$siteurl = $_POST['siteurl'];
 	jjreader_log("Searching for feeds and site title at ". $siteurl);
 
-
 	$html = file_get_contents($siteurl); //get the html returned from the following url
-
 	$dom = new DOMDocument();
-
 	libxml_use_internal_errors(TRUE); //disable libxml errors
-
 	if(!empty($html)){ //if any html is actually returned
-
 		$dom->loadHTML($html);
-		
 		$thetitle = $dom->getElementsByTagName("title");
-		
 		//echo $thetitle[0]->nodeValue;
 		$returnArray[] = array("type"=>"title", "data"=>$thetitle[0]->nodeValue);
-	
 		$website_links = $dom->getElementsByTagName("link");
 		if($website_links->length > 0){
 			foreach($website_links as $row){
@@ -394,23 +392,132 @@ function jjreader_findFeeds($siteurl){
 			// Also here check for h-feed in the actual html
 			// If h-feed is found return (type="h-feed", data= "site url?"
 		}
-		
-	
-		
 		echo json_encode($returnArray);
 	}
+	wp_die(); // this is required to terminate immediately and return a proper response
+}
 
+/*
+** Defines the interval for the cron job (5 minutes) 
+*/
+function jjreader_cron_definer($schedules){
+	$schedules['fivemins'] = array(
+		'interval'=> 300,
+		'display'=>  __('Once Every 5 Minutes')
+	);
+	return $schedules;
+}
+
+/*
+** Aggregator function (run using cron job or by refresh button)
+*/
+add_action( 'wp_ajax_jjreader_aggregator', 'jjreader_aggregator' );
+function jjreader_aggregator() {
+	jjreader_log("aggregator was run");
+	global $wpdb;
+	$table_following = $wpdb->prefix . "jjreader_following";
+	//Iterate through each item in the 'following' table.
+	foreach( $wpdb->get_results("SELECT * FROM ".$table_following.";") as $key => $row) {
+		$feedurl = $row->feedurl;
+		jjreader_log("checking for new posts in ". $feedurl);
+		$feed = jjreader_fetch_feed($feedurl);
+		
+		if(is_wp_error($feed)){
+			jjreader_log($feed->get_error_message());
+			trigger_error($feed->get_error_message());
+			jjreader_log("Feed read Error: ".$feed->get_error_message());
+		} else {
+			jjreader_log("Feed read success.");
+		}
+		$feed->enable_cache(false);
+		$feed->strip_htmltags(false);   
+		//jjreader_log("<br/>Feed object:");
+		//jjreader_log(print_r($feed,true));
+		$items = $feed->get_items();
+
+		//jjreader_log(substr(print_r($items,true),0,500));
+		//jjreader_log("<br/>items object:");
+		usort($items,'date_sort');
+		
+		foreach ($items as $item){
+			try{
+				jjreader_log("<br/>got ".$item->get_title()." from ". $item->get_feed()->get_title()."<br/>");
+				add_reader_post($item->get_permalink(),$item->get_title(),html_entity_decode ($item->get_description()),$item->get_feed()->get_title(),$item->get_feed()->get_link(),$item->get_date("U"));
+			}catch(Exception $e){
+				jjreader_log("Exception occured: ".$e->getMessage());
+			}
+		}
+		
+		remove_filter( 'wp_feed_cache_transient_lifetime', 'jjreader_feed_time' );
+	}
+	jjreader_log('No feed defined');
+		
+	// TO DO: Clean up old posts
 	
 	wp_die(); // this is required to terminate immediately and return a proper response
 }
 
+/*
+** Fetch a feed and return its content
+*/
+function jjreader_fetch_feed($url) {
+	require_once (ABSPATH . WPINC . '/class-feed.php');
+
+	$feed = new SimplePie();
+	jjreader_log("Url is fetchable");
+		$feed->set_feed_url($url);
+		$feed->set_cache_class('WP_Feed_Cache');
+		$feed->set_file_class('WP_SimplePie_File');
+		$feed->set_cache_duration(30);
+		$feed->enable_cache(false);
+		$feed->set_useragent('Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/535.7 (KHTML, like Gecko) Chrome/16.0.912.77 Safari/535.7');//some people don't like us if we're not a real boy	
+	$feed->init();
+	$feed->handle_content_type();
+	
+	//jjreader_log("Feed:".print_r($feed,true));
+
+	if ( $feed->error() )
+		$errstring = implode("\n",$feed->error());
+		//if(strlen($errstring) >0){ $errstring = $feed['data']['error'];}
+		if(stristr($errstring,"XML error")){
+			jjreader_log('simplepie-error-malfomed: '.$errstring.'<br/><code>'.htmlspecialchars ($url).'</code>');
+		}elseif(strlen($errstring) >0){
+			jjreader_log('simplepie-error: '.$errstring);
+		}else{
+			//jjreader_log('simplepie-error-empty: '.print_r($feed,true).'<br/><code>'.htmlspecialchars ($url).'</code>');
+		}
+	return $feed;
+}
+
+
+/*
+** Runs upon deactivating the plugin
+*/
+function jjreader_deactivate() {
+	// on deactivation remove the cron job 
+	if ( wp_next_scheduled( 'jjreader_generate_hook' ) ) {
+		wp_clear_scheduled_hook( 'jjreader_generate_hook' );
+	}
+	jjreader_log("deactivated plugin");
+}
 
 
 /* Functions to run upon installation */ 
+register_activation_hook(__FILE__,'jjreader_install');
 register_activation_hook(__FILE__,'jjreader_create_tables');
+
+/* Functions to run upon deactivation */ 
+register_deactivation_hook( __FILE__, 'jjreader_deactivate' );
+
+add_filter('cron_schedules','jjreader_cron_definer');
+add_action( 'jjreader_generate_hook', 'jjreader_aggregator' );
+
 
 /* Check if the database version has changed when plugin is updated */ 
 add_action( 'plugins_loaded', 'jjreader_update_db_check' );
+
+/* Hook to display admin notice */ 
+add_action( 'admin_notices', 'initial_setup_admin_notice' );
 
 	
 ?>

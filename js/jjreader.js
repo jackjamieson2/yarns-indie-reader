@@ -5,11 +5,30 @@
  **/
 (function($) {
 
+	
+
     //Hide the 'add site' form if javascript is enabled
     $('#jjreader-addSite-form').hide();
     //Show the 'add site' button if javascript is enable
     $('#jjreader-button-addSite').show();
 
+
+	 // The refresh button
+    $("#jjreader-button-refresh").on("click", function() {
+        console.log('Clicked refresh button');
+        $.ajax({
+				url : jjreader_ajax.ajax_url,
+				type : 'post',
+				data : {
+					action : 'jjreader_aggregator',
+				},
+				success : function( response ) {
+					// TO DO: refresh the feed display once posts have been fetched
+					console.log("finished refreshing posts");
+				}
+			});
+    });
+    
 
     //Toggle the field for adding subscriptions
     $("#jjreader-button-addSite").on("click", function() {
