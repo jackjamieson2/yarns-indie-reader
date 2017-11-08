@@ -30,6 +30,9 @@
 
 defined( 'ABSPATH' ) or die( 'No script kiddies please!' );
 
+require_once('jjreader_responses.php');
+
+
 global $jjreader_db_version;
 $jjreader_db_version = "1.0a";
 
@@ -229,24 +232,72 @@ function jjreader_page(){
 }
 // Fetch and display posts from subscribed sites
 function jjreader_subscription_viewer(){
-	?>
-	A button element
-	<?php
-	echo "Show the feed here";
+	// Check if post_kinds plugin is installed (https://wordpress.org/plugins/indieweb-post-kinds/)
+	// If so, set post_kinds to true, if not, set to false
+	if ( in_array( 'indieweb-post-kinds/indieweb-post-kinds.php', apply_filters( 'active_plugins', get_option( 'active_plugins' ) ) ) ) {
+		$post_kinds = True;
+	} else {
+		$post_kinds = False;
+	} 
 	
-	//Check if the user is logged in with sufficient privileges to create posts
-	//( This should go below each post)
-	jjreader_reply_actions();
+
+	// Access databsae
+	global $wpdb;
+	// Start at post 0, show 15 posts per page
+	$fpage=0;
+	$length = 15;
+	//$table_following = $wpdb->prefix . "jjreader_posts";
+	$items = $wpdb->get_results(
+		'SELECT * 
+		FROM  `'.$wpdb->prefix . 'jjreader_posts` 
+		ORDER BY  `date` DESC 
+		LIMIT '.($fpage*$length).' , '.$length.';'
+	);
+	      
+	?>
+	<div id = "jjreader-feed-container">
+	<?php
+	//Iterate through all the posts in the database. Display the first 15 
+	if ( !empty( $items ) ) { 
+		foreach ( $items as $item ) {
+			?>
+			<div class="jjreader-feed-item">
+				<div class="jjreader-item-meta">		
+					<?php
+					echo '<a class="jjreader-item-authorname" href="'.$item->authorurl.'">'.$item->authorname.'</a> ';
+					echo '<a class="jjreader-item-date" href="'.$item->permalink.'">at '.$item->date.'</a>';
+					?>
+				</div>
+				<?php
+					echo '<a class="jjreader-item-title" href="'.$item->permalink.'">'.$item->title.'</a>';
+				?>
+			
+				<div class="jjreader-item-content">
+					<?php
+					echo $item->content;
+					?>
+				</div>
+				
+				<div class="jjreader-item-reponse">
+					<?php jjreader_reply_actions($post_kinds); ?>
+				</div>
+
+			</div>
+			<?php
+		}
+	}
+	?>
+	
+	
+	</div>
+	<?php
 
 }
 
 // Show interface for adding/removing/editing subscriptions
 function jjreader_subscription_editor(){
 	?>
-	
 	<button id="jjreader-button-refresh" class="ui-state-default ui-corner-all" title=".ui-icon-arrowrefresh-1-e"><span class="ui-icon ui-icon-arrowrefresh-1-e"></span></button>
-	
-
 	<div id="jjreader-addSite-form" method="post" action="<?php echo str_replace( '%7E', '~', $_SERVER['REQUEST_URI']); ?>">
 		<strong>Add a subscription</strong><br>
         <label for="jjreader-siteurl">Site URL </label><input type="text" name="jjreader-siteurl" value="" size="30"><br>
@@ -257,18 +308,20 @@ function jjreader_subscription_editor(){
 		<label for="jjreader-sitetitle">Site Title </label><input type="text" name="jjreader-sitetitle" value="" size="30"><br>
 		<button id="jjreader-addSite-submit" class="ui-button ui-corner-all ui-widget">Submit</button>
 	</div>
-
-
-
-
 	<button id="jjreader-button-addSite" class="ui-button ui-corner-all ui-widget">Add Site</button>
 	<?php
 }
 
 // Show reply actions if the user has permission to create posts
-function jjreader_reply_actions(){
+function jjreader_reply_actions($post_kinds){
 	if(current_user_can( 'publish_posts')){
-		echo "reply buttons";
+		if ($post_kinds == true){
+			//If post_kinds is true, display response buttons using post-kinds
+			echo "Reply buttons with post kinds";
+		} else {
+			//If post_kinds is false, display reponse buttons without post-kinds	
+			echo "Reply buttons with no post kinds";
+		}
 	}
 }
 
@@ -290,12 +343,15 @@ function jjreader_log($message){
 /*
 ** Add a post to the jjreader_posts table in the database
 */
-function add_reader_post($permalink,$title,$content,$authorname='',$authorurl='',$time=0,$avurl=''){
+function add_reader_post($permalink,$title,$content,$authorname='',$authorurl='',$time=0,$avurl='',$siteurl){
 	jjreader_log("adding post: ".$permalink.": ".$title);
 	global $wpdb;
 	if($time < 1){
 		$time = time();
 	}
+	//If the author url is not known, then just use the site url
+	
+	if (empty($authorurl)){$authorurl = $siteurl;}
 	// Add the post (if it doesn't already exist)
 	$table_name = $wpdb->prefix . "jjreader_posts";
 	if($wpdb->get_var( "SELECT COUNT(*) FROM ".$table_name." WHERE permalink LIKE \"".$permalink."\";")<1){
@@ -419,6 +475,7 @@ function jjreader_aggregator() {
 	//Iterate through each item in the 'following' table.
 	foreach( $wpdb->get_results("SELECT * FROM ".$table_following.";") as $key => $row) {
 		$feedurl = $row->feedurl;
+		$siteurl = $row->siteurl;
 		jjreader_log("checking for new posts in ". $feedurl);
 		$feed = jjreader_fetch_feed($feedurl);
 		
@@ -442,7 +499,7 @@ function jjreader_aggregator() {
 		foreach ($items as $item){
 			try{
 				jjreader_log("<br/>got ".$item->get_title()." from ". $item->get_feed()->get_title()."<br/>");
-				add_reader_post($item->get_permalink(),$item->get_title(),html_entity_decode ($item->get_description()),$item->get_feed()->get_title(),$item->get_feed()->get_link(),$item->get_date("U"));
+				add_reader_post($item->get_permalink(),$item->get_title(),html_entity_decode ($item->get_description()),$item->get_feed()->get_title(),$item->get_feed()->get_link(),$item->get_date("U"),$siteurl);
 			}catch(Exception $e){
 				jjreader_log("Exception occured: ".$e->getMessage());
 			}
