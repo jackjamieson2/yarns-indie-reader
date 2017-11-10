@@ -30,6 +30,15 @@
 
 defined( 'ABSPATH' ) or die( 'No script kiddies please!' );
 
+/* NOTE: If post kinds is installed, requiring Mf2 causes an error because it is already 
+*  included. Therefore will need to add a check and only include if not already available
+* (can enqueue do this?)
+*/ 
+ 
+//require_once 'lib/Mf2/Parser.php'; // For parsing h-feed
+
+require 'lib/phpuri.php'; // For converting relative URIs to absolute 
+
 require_once('jjreader_responses.php');
 
 
@@ -268,12 +277,12 @@ function jjreader_subscription_viewer(){
 					echo '<a class="jjreader-item-date" href="'.$item->permalink.'">at '.$item->date.'</a>';
 					?>
 				</div>
-				<?php
-					echo '<a class="jjreader-item-title" href="'.$item->permalink.'">'.$item->title.'</a>';
-				?>
-			
+
 				<div class="jjreader-item-content">
 					<?php
+					if ($item->title !=""){
+						echo '<a class="jjreader-item-title" href="'.$item->permalink.'">'.$item->title.'</a>';
+					}				
 					echo $item->content;
 					?>
 				</div>
@@ -350,8 +359,25 @@ function add_reader_post($permalink,$title,$content,$authorname='',$authorurl=''
 		$time = time();
 	}
 	//If the author url is not known, then just use the site url
-	
 	if (empty($authorurl)){$authorurl = $siteurl;}
+	
+	// If the content begins with the title, then the post is probably an aside, so 
+	// the title can be dropped. 	
+	$clean_title = strip_tags(rtrim($title,".")); // remove trailing "..."
+	$clean_content = strip_tags(trim($content)); // remove white space on either side
+	if (strpos($clean_content,$clean_title)===0){
+		$title="";
+	}
+	
+	
+	jjreader_log("content:  ". $clean_content);
+	jjreader_log("title: ". $clean_title);
+
+	jjreader_log("strpos was ". strpos($clean_content,$clean_title)	);
+	// IF STATEMENT FOR DEBUGGING
+
+	
+	
 	// Add the post (if it doesn't already exist)
 	$table_name = $wpdb->prefix . "jjreader_posts";
 	if($wpdb->get_var( "SELECT COUNT(*) FROM ".$table_name." WHERE permalink LIKE \"".$permalink."\";")<1){
@@ -378,6 +404,15 @@ function add_reader_post($permalink,$title,$content,$authorname='',$authorurl=''
 	}else{
 		jjreader_log("duplicate detected");
 	}
+	
+	
+	
+	
+
+	
+	
+	
+	
 }
 
 // Add a new subscription
@@ -442,7 +477,12 @@ function jjreader_findFeeds($siteurl){
 				if ($row->getAttribute("type")=='application/rss+xml'||
 					$row->getAttribute("type")=='application/atom+xml'||
 					$row->getAttribute("type")=='text/xml') {
-					$returnArray[] = array("type"=>$row->getAttribute("type"), "data"=>$row->getAttribute("href"));
+					
+					// Convert relative feed URL to absolute URL if needed
+					$feedurl = phpUri::parse($siteurl)->join($row->getAttribute("href"));
+					//Return the feed type and absolute feed url 
+					$returnArray[] = array("type"=>$row->getAttribute("type"), "data"=>$feedurl);
+					
 				}
 			}
 			// Also here check for h-feed in the actual html
@@ -498,7 +538,7 @@ function jjreader_aggregator() {
 		
 		foreach ($items as $item){
 			try{
-				jjreader_log("<br/>got ".$item->get_title()." from ". $item->get_feed()->get_title()."<br/>");
+				//jjreader_log("got ".$item->get_title()." from ". $item->get_feed()->get_title()."<br/>");
 				add_reader_post($item->get_permalink(),$item->get_title(),html_entity_decode ($item->get_description()),$item->get_feed()->get_title(),$item->get_feed()->get_link(),$item->get_date("U"),$siteurl);
 			}catch(Exception $e){
 				jjreader_log("Exception occured: ".$e->getMessage());
