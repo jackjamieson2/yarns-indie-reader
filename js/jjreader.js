@@ -29,6 +29,52 @@
 			});
     });
     
+    // Reply buttons
+    $(".jjreader-reply").on("click", function() {
+        console.log('Clicked reply button');
+        reply_to = $(this).parents('.jjreader-feed-item').find('.jjreader-item-date').attr('href'); 
+        
+        
+        $.ajax({
+				url : jjreader_ajax.ajax_url,
+				type : 'post',
+				data : {
+					action : 'jjreader_response',
+					response_type: "reply",
+					in_reply_to: reply_to,
+				},
+				success : function( response ) {
+					// TO DO: refresh the feed display once posts have been fetched
+					console.log("finished liking posts");
+				}
+			});
+			
+    });
+    
+    // Like buttons
+    $(".jjreader-like").on("click", function() {
+        console.log('Clicked like button');
+        reply_to = $(this).parents('.jjreader-feed-item').find('.jjreader-item-date').attr('href'); 
+        reply_to_title = $(this).parents('.jjreader-feed-item').find('.jjreader-item-title').text();
+        reply_to_content = $(this).parents('.jjreader-feed-item').find('.jjreader-item-content').html();
+        
+        $.ajax({
+				url : jjreader_ajax.ajax_url,
+				type : 'post',
+				data : {
+					action : 'jjreader_response',
+					response_type: "like",
+					in_reply_to: reply_to,
+					in_reply_to_title: reply_to_title,
+					in_reply_to_content: reply_to_content
+				},
+				success : function( response ) {
+					// TO DO: refresh the feed display once posts have been fetched
+					console.log("response = " . response);
+				}
+			});
+    });
+    
 
     //Toggle the field for adding subscriptions
     $("#jjreader-button-addSite").on("click", function() {

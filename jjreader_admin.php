@@ -44,3 +44,35 @@
     </form>
 </div>
 
+
+<div class = "jjreader_log">
+<h2> Most recent 100 items from log </h2>
+<?php 
+
+	// Access databsae
+	global $wpdb;
+	// Start at post 0, show 15 posts per page
+	$fpage=0;
+	$length = 100;
+
+	$items = $wpdb->get_results(
+		'SELECT * 
+		FROM  `'.$wpdb->prefix . 'jjreader_log` 
+		ORDER BY  `date` DESC 
+		LIMIT '.($fpage*$length).' , '.$length.';'
+	);
+	
+	
+	if ( !empty( $items ) ) { 
+		foreach ( $items as $item ) {
+			echo '<div class="jjreader-log-item">';
+			echo $item->date.': '.$item->log;
+			echo '</div>'; 
+		}
+	}
+	
+	
+
+?>
+
+</div>

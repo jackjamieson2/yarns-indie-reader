@@ -39,8 +39,6 @@ defined( 'ABSPATH' ) or die( 'No script kiddies please!' );
 
 require 'lib/phpuri.php'; // For converting relative URIs to absolute 
 
-require_once('jjreader_responses.php');
-
 
 global $jjreader_db_version;
 $jjreader_db_version = "1.0a";
@@ -241,14 +239,7 @@ function jjreader_page(){
 }
 // Fetch and display posts from subscribed sites
 function jjreader_subscription_viewer(){
-	// Check if post_kinds plugin is installed (https://wordpress.org/plugins/indieweb-post-kinds/)
-	// If so, set post_kinds to true, if not, set to false
-	if ( in_array( 'indieweb-post-kinds/indieweb-post-kinds.php', apply_filters( 'active_plugins', get_option( 'active_plugins' ) ) ) ) {
-		$post_kinds = True;
-	} else {
-		$post_kinds = False;
-	} 
-	
+
 
 	// Access databsae
 	global $wpdb;
@@ -288,10 +279,11 @@ function jjreader_subscription_viewer(){
 				</div>
 				
 				<div class="jjreader-item-reponse">
-					<?php jjreader_reply_actions($post_kinds); ?>
+					<?php jjreader_reply_actions(); ?>
 				</div>
 
-			</div>
+
+			</div><!--.jjreader-feed-item-->
 			<?php
 		}
 	}
@@ -323,7 +315,20 @@ function jjreader_subscription_editor(){
 
 // Show reply actions if the user has permission to create posts
 function jjreader_reply_actions($post_kinds){
+	// Check if post_kinds plugin is installed (https://wordpress.org/plugins/indieweb-post-kinds/)
+	// If so, set post_kinds to true, if not, set to false
+	if ( in_array( 'indieweb-post-kinds/indieweb-post-kinds.php', apply_filters( 'active_plugins', get_option( 'active_plugins' ) ) ) ) {
+		$post_kinds = True;
+	} else {
+		$post_kinds = False;
+	} 
+	
 	if(current_user_can( 'publish_posts')){
+		?>
+		<button class="jjreader-like ui-button ui-corner-all ui-widget"><span class="ui-icon ui-icon-heart"></span>Like</button>
+		<button class="jjreader-reply ui-button ui-corner-all ui-widget"><span class="ui-icon ui-icon-arrowreturnthick-1-w"></span>Reply</button>
+		<?php
+		/*
 		if ($post_kinds == true){
 			//If post_kinds is true, display response buttons using post-kinds
 			echo "Reply buttons with post kinds";
@@ -331,6 +336,7 @@ function jjreader_reply_actions($post_kinds){
 			//If post_kinds is false, display reponse buttons without post-kinds	
 			echo "Reply buttons with no post kinds";
 		}
+		*/
 	}
 }
 
@@ -452,6 +458,74 @@ function jjreader_new_subscription($siteurl, $feedurl, $sitetitle, $feedtype){
 		echo "You are already subscribed to " . $feedurl;
 	}
 	wp_die(); // this is required to terminate immediately and return a proper response
+}
+
+/*
+** Post a response to an item from the feed
+*/
+add_action( 'wp_ajax_jjreader_response', 'jjreader_response' );
+function jjreader_response ($response_type, $in_reply_to, $reply_to_title, $reply_to_content){	
+	$response_type = $_POST['response_type'];
+	$in_reply_to = $_POST['in_reply_to'];
+	$reply_to_title = $_POST['reply_to_title'];
+	$reply_to_content = $_POST['reply_to_content'];
+
+	
+	//If the post has a title, then we will use the title for display. If not, use the url
+	// for display
+	jjreader_log("Response: " . $response_type . " — " . $in_reply_to);
+	if ($reply_to_title){
+		$display_title = $reply_to_title;
+	} else {
+		$display_title = $in_reply_to;
+	}
+	$attribution = '<em><a href="'.$in_reply_to.'">'.$display_title.'</a></em>';
+	if ($response_type == "like"){
+		$content = "Liked " . $attribution;
+		$title = "";
+		$post_type = "link";
+		$post_kind = "like";
+	}
+	jjreader_log(" posting response");
+	$my_post = array(
+		'post_title' => $title,
+		'post_content' => $content,
+		'post_status' => 'draft',
+	);
+	$the_post_id = wp_insert_post( $my_post );
+	jjreader_log(" response posted: " . $the_post_id);
+	//__update_post_meta( $the_post_id, 'my-custom-field', 'my_custom_field_value' );
+	
+	// Set the post format once the post has been created 
+	set_post_format( $the_post_id , $post_type);
+	
+	// If the post kinds plugin is installed, set the post kind
+	if (function_exists('set_post_kind')){
+		set_post_kind( $the_post_id , $post_kind);
+	}
+	
+	echo $the_post_id;
+	wp_die(); // this is required to terminate immediately and return a proper response
+	
+	/*
+	After a post has been created, assign a post kind if applicable
+	
+	*/
+	/**
+ * Assign a kind to a post
+ *
+ 
+ This uses the set_post_kind function, which is part of the post kinds plugin. 
+	Do this in the form "set_post_kind( $post, $kind)"
+
+ See below for notes:
+ * @param int|object $post The post for which to assign a kind.
+ * @param string     $kind A kind to assign. Using an empty string or array will default to note.
+ * @return mixed WP_Error on error. Array of affected term IDs on success.
+ */
+	//function set_post_kind( $post, $kind ) {
+	//   return Kind_Taxonomy::set_post_kind( $post, $kind );
+	//	}
 }
 
 /*
