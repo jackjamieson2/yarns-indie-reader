@@ -34,58 +34,33 @@
     */
     
     // First, show the reply text when user clicks 'reply'
-    $(".jjreader-reply").on("click", function() {		 
-		 $(this).parents('.jjreader-feed-item').find('.jjreader-reply-input').show();
+    $(".jjreader-reply").on("click", function() {
+    	$(this).parents('.jjreader-feed-item').find('.jjreader-reply-input').show();
     });
     
-    // Second, create reply post when user clicks 'Post'
+    // Second, create reply post when user clicks 'Submit'
       $(".jjreader-reply-submit").on("click", function() {
-        console.log('Clicked reply button');
+        console.log('Clicked submit button');
         reply_to = $(this).parents('.jjreader-feed-item').find('.jjreader-item-date').attr('href'); 
+        reply_to_title = $(this).parents('.jjreader-feed-item').find('.jjreader-item-title').text();
+        reply_to_content = $(this).parents('.jjreader-feed-item').find('.jjreader-item-content').html();
         
-        
-        $.ajax({
-				url : jjreader_ajax.ajax_url,
-				type : 'post',
-				data : {
-					action : 'jjreader_response',
-					response_type: "reply",
-					in_reply_to: reply_to,
-				},
-				success : function( response ) {
-					// TO DO: refresh the feed display once posts have been fetched
-					console.log("finished liking posts");
-				}
-			});
-			
+        title = $(this).parents('.jjreader-feed-item').find('.jjreader-reply-title').val();
+        content = $(this).parents('.jjreader-feed-item').find('.jjreader-reply-text').val();
+
+        type= "reply";
+        status = "draft";
+        jjreader_post(reply_to, reply_to_title, reply_to_content, type, status,title,content, function(response){
+        	// This should return the post id as response
+        });	
     });
     
     // Third, when user clicks 'Full editor', create a draft of the post, then open 
     // the full post editor in a new tab
-    /* The code here is currently the same as the reply code — this is incomplete
-    Most likely the best approach is to create a separate js function for all posting
-    This function should have attributes:
-    - in-reply-to
-    - response-type (like, reply)
-    - status (post / draft)
-    - 
-    */
 	 $(".jjreader-reply-fulleditor").on("click", function() {
-        console.log('');
-        reply_to = $(this).parents('.jjreader-feed-item').find('.jjreader-item-date').attr('href'); 
-        $.ajax({
-				url : jjreader_ajax.ajax_url,
-				type : 'post',
-				data : {
-					action : 'jjreader_response',
-					response_type: "reply",
-					in_reply_to: reply_to,
-				},
-				success : function( response ) {
-					// TO DO: refresh the feed display once posts have been fetched
-					console.log("finished liking posts");
-				}
-			});	
+           /* This should display the full editor (in a new tab?)
+    */
+
     });    
 
     /*
@@ -96,34 +71,21 @@
         reply_to = $(this).parents('.jjreader-feed-item').find('.jjreader-item-date').attr('href'); 
         reply_to_title = $(this).parents('.jjreader-feed-item').find('.jjreader-item-title').text();
         reply_to_content = $(this).parents('.jjreader-feed-item').find('.jjreader-item-content').html();
+
+        title = "";
+        content = "";
         
         //Note: call jjreader_post with a callback to deal with the response
         // https://stackoverflow.com/questions/5797930/how-to-write-a-jquery-function-with-a-callback
         type = "like";
         status = "draft";
         
-        jjreader_post(reply_to, reply_to_title, reply_to_content, type, status, function(response){
+        jjreader_post(reply_to, reply_to_title, reply_to_content, type, status,title,content, function(response){
         	// This should call jjreader_post and return the post id as 'response' 
         
         });
         
-        /*
-        $.ajax({
-				url : jjreader_ajax.ajax_url,
-				type : 'post',
-				data : {
-					action : 'jjreader_response',
-					response_type: "like",
-					in_reply_to: reply_to,
-					in_reply_to_title: reply_to_title,
-					in_reply_to_content: reply_to_content
-				},
-				success : function( response ) {
-					// TO DO: refresh the feed display once posts have been fetched
-					console.log("response = " . response);
-				}
-			});
-			*/
+       
     });
     
     // Generic post creator
@@ -131,7 +93,7 @@
        and returns the post ID (if successful) or 0 (if unsuccessful)
        
        */
-	function jjreader_post(reply_to, reply_to_title, reply_to_content, type, status) {
+	function jjreader_post(reply_to, reply_to_title, reply_to_content, type, status, title, content) {
 		 $.ajax({
 				url : jjreader_ajax.ajax_url,
 				type : 'post',
@@ -141,7 +103,9 @@
 					in_reply_to: reply_to,
 					in_reply_to_title: reply_to_title,
 					in_reply_to_content: reply_to_content, 
-					reply_status = status
+					reply_status : status,
+					title : title,
+					content: content
 				},
 				success : function( response ) {
 					/* TO DO: Return the response 

@@ -327,6 +327,11 @@ function jjreader_reply_actions($post_kinds){
 		?>
 		<button class="jjreader-like ui-button ui-corner-all ui-widget"><span class="ui-icon ui-icon-heart"></span>Like</button>
 		<button class="jjreader-reply ui-button ui-corner-all ui-widget"><span class="ui-icon ui-icon-arrowreturnthick-1-w"></span>Reply</button>
+		<div class="jjreader-reply-input jjreader-hidden">
+			<input class ="jjreader-reply-title" placeholder = "Enter a reply title (if desired)"></input>
+			<textarea class ="jjreader-reply-text" placeholder="Enter your reply here" ></textarea>
+			<button class="jjreader-reply-submit ui-button ui-corner-all ui-widget"><span class="ui-icon"></span>Submit</button>
+		</div>
 		<?php
 		/*
 		if ($post_kinds == true){
@@ -464,32 +469,56 @@ function jjreader_new_subscription($siteurl, $feedurl, $sitetitle, $feedtype){
 	wp_die(); // this is required to terminate immediately and return a proper response
 }
 
+
 /*
 ** Post a response to an item from the feed
 */
 add_action( 'wp_ajax_jjreader_response', 'jjreader_response' );
-function jjreader_response ($response_type, $in_reply_to, $reply_to_title, $reply_to_content){	
+function jjreader_response ($response_type, $in_reply_to, $reply_to_title, $reply_to_content, $title, $content){	
 	$response_type = $_POST['response_type'];
 	$in_reply_to = $_POST['in_reply_to'];
 	$reply_to_title = $_POST['reply_to_title'];
 	$reply_to_content = $_POST['reply_to_content'];
+	$post_title = $_POST['title'];
+	$post_content = $_POST['content'];
 
 	
+	jjreader_log("Response: " . $response_type . " — " . $in_reply_to);
+
 	//If the post has a title, then we will use the title for display. If not, use the url
 	// for display
-	jjreader_log("Response: " . $response_type . " — " . $in_reply_to);
 	if ($reply_to_title){
 		$display_title = $reply_to_title;
 	} else {
 		$display_title = $in_reply_to;
 	}
 	$attribution = '<em><a href="'.$in_reply_to.'">'.$display_title.'</a></em>';
+
+
 	if ($response_type == "like"){
+
 		$content = "Liked " . $attribution;
 		$title = "";
 		$post_type = "link";
 		$post_kind = "like";
+	} elseif ($response_title == "reply" ){
+		$content = "Reply to " . $attribution . "<br><br>"; 
+		$content .= $post_content;
+		$title = $post_title;
+		if (strlen($title)>0){
+			//If the reply has a title, it's post kind is 'post'
+			$post_type = "post";
+			$post_kind = "article";
+		} else {
+			//If the reply does not have a title, it's post kind is 'aside'	
+			$post_type = "aside";
+			$post_kind = "note";		
+		}
+
+
 	}
+
+
 	jjreader_log(" posting response");
 	$my_post = array(
 		'post_title' => $title,
