@@ -369,21 +369,25 @@ function add_reader_post($permalink,$title,$content,$authorname='',$authorurl=''
 	
 	// If the content begins with the title, then the post is probably an aside, so 
 	// the title can be dropped. 	
-	$clean_title = strip_tags(rtrim($title,".")); // remove trailing "..."
-	$clean_content = strip_tags(trim($content)); // remove white space on either side
-	if (strpos($clean_content,$clean_title)===0){
+	$clean_title = html_entity_decode($title); // First convert html entities to text (to ensure consistent comparision)
+	$clean_title = strip_tags(rtrim($clean_title,".")); // remove trailing "..."
+	$clean_title = htmlentities($clean_title, ENT_QUOTES); // Convert quotation marks to HTML entities
+	$clean_title = str_replace(array("\r", "\n"), '', $clean_title); // remove line breaks from CONTENT
+	
+	$clean_content = html_entity_decode($content); // First convert html entities to text (to ensure consistent comparision)
+	$clean_content = strip_tags(trim($clean_content)); // remove white space on either side
+	$clean_content = htmlentities($clean_content, ENT_QUOTES); // Convert quotation marks to HTML entities
+	$clean_content = str_replace(array("\r", "\n"), '', $clean_content); // remove line breaks from CONTENT
+
+	if (strpos($clean_content,$clean_title)===0 ){
 		$title="";
-	}
+	} 
 	
 	
 	jjreader_log("content:  ". $clean_content);
-	jjreader_log("title: ". $clean_title);
-
-	jjreader_log("strpos was ". strpos($clean_content,$clean_title)	);
-	// IF STATEMENT FOR DEBUGGING
-
-	
-	
+	jjreader_log("title: ". $clean_title);	
+	jjreader_log("strpos: ". strpos($clean_content,$clean_title));
+	jjreader_log("strcmp title,content: ".strcmp($clean_title,$clean_content));
 	// Add the post (if it doesn't already exist)
 	$table_name = $wpdb->prefix . "jjreader_posts";
 	if($wpdb->get_var( "SELECT COUNT(*) FROM ".$table_name." WHERE permalink LIKE \"".$permalink."\";")<1){
