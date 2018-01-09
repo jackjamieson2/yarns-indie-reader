@@ -313,6 +313,7 @@ function jjreader_subscription_editor(){
 		<form class="jjreader-feedpicker jjreader-hidden "></form
 		<label for="jjreader-feedurl">Feed URL </label><input type="text" name="jjreader-feedurl" value="" size="30"><br>
 		<label for="jjreader-sitetitle">Site Title </label><input type="text" name="jjreader-sitetitle" value="" size="30"><br>
+		<div>Feed type:<span class="jjreader-feed-type"></span></div>
 		<button id="jjreader-addSite-submit" class="ui-button ui-corner-all ui-widget">Submit</button>
 	</div>
 	<?php

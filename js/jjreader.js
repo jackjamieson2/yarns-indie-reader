@@ -134,7 +134,11 @@
     //Update feed url when radio button is clicked
 	$("#jjreader-addSite-form").on("click","input[name=jjreader_feed_option]", function() {
 		console.log("test");
-		$("input[name=jjreader-feedurl]").val($(this).val());	
+		var label = $("label[for='"+$(this).attr("id")+"']");
+
+		$("input[name=jjreader-feedurl]").val($(this).val());
+		$("span.jjreader-feed-type").text($("label[for='"+$(this).attr("id")+"']").find('.jjreader-feedpicker-type').text());
+		
 	});
 
     
@@ -172,7 +176,7 @@
 							// Create radio buttons to choose between feed options	
 							var radio_name = "jjreader-feedpicker_" + i;
 							var radio_btn = '<input type="radio" name="jjreader_feed_option" value="'+r_data+'" id="'+radio_name+'" checked>';
-							radio_btn += ' <label for="'+radio_name+'">'+r_data+'<span class="jjreader-feed-type">('+r_type+')</span></label><br>';
+							radio_btn += ' <label for="'+radio_name+'">'+r_data+' (<span class="jjreader-feedpicker-type">'+r_type+'</span>)</label><br>';
 							$('.jjreader-feedpicker').append(radio_btn);
 							// Automatically set the feedurl to the first returned feed
 							/*if ($('.jjreader-feedpicker input').length ==1){
@@ -206,6 +210,7 @@
 		var new_siteURL = $("input[name=jjreader-siteurl]").val();
         var new_feedURL = $("input[name=jjreader-feedurl]").val();
         var new_siteTitle = $("input[name=jjreader-sitetitle]").val();
+        var new_feedType = $(".jjreader-feed-type").text();
 
         if (new_feedURL) {
         	console.log("Adding feed " + new_feedURL);
@@ -217,7 +222,7 @@
 					siteurl: new_siteURL,
 					feedurl: new_feedURL,
 					sitetitle: new_siteTitle,
-					feedtype: 'rss',
+					feedtype: new_feedType,
 				},
 				success : function( response ) {
 					jjreader_msg(response, $("#jjreader-addSite-submit"));
