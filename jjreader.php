@@ -595,20 +595,24 @@ function jjreader_findFeeds($siteurl){
 			//$html = '<a class="h-card" href="https://waterpigs.co.uk/">Barnaby Walters</a>';
 			//$mf = Mf2\fetch($siteurl);
 			$mf = Mf2\parse($html,$siteurl);
-			$output_log ="Output: ";
+			$output_log ="Output: <br>";
 
-			foreach ($mf['items'] as $microformat) {
+			foreach ($mf['items'] as $mf_item) {
 				if ($found_hfeed == FALSE) {
-					if ("{$microformat['type'][0]}"=="h-feed"||  // check 1
-						"{$microformat['type'][0]}"=="h-entry"){
+					$output_log .= "A {$mf_item['type'][0]} called {$mf_item['properties']['name'][0]}<br>";
+					if ("{$mf_item['type'][0]}"=="h-feed"||  // check 1
+						"{$mf_item['type'][0]}"=="h-entry"){
 						//Found an h-feed (probably)
 						$returnArray[] = array("type"=>"h-feed", "data"=>$siteurl);
 						$found_hfeed = TRUE; 
 					} else {
-						foreach($item->children as $child){
+						$output_log .="Searching children... <br>";
+
+						foreach($mf_item['children'] as $child){
 							if ($found_hfeed == FALSE) {
-								if ("{$microformat['type'][0]}"=="h-feed"|| // check 1
-									"{$microformat['type'][0]}"=="h-entry"){
+								$output_log .= "A CHILD {$child['type'][0]} called {$child['properties']['name'][0]}<br>";
+								if ("{$child['type'][0]}"=="h-feed"|| // check 1
+									"{$child['type'][0]}"=="h-entry"){
 									//Found an h-feed (probably)
 									$returnArray[] = array("type"=>"h-feed", "data"=>$siteurl);
 									$found_hfeed = TRUE; 
@@ -618,7 +622,6 @@ function jjreader_findFeeds($siteurl){
 					}
 				}
 
-				$output_log .= "A {$microformat['type'][0]} called {$microformat['properties']['name'][0]}\n";
 			}
 			jjreader_log($output_log);
 
