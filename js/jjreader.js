@@ -35,7 +35,6 @@
     
     // First, show the reply text when user clicks 'reply'
     $(".jjreader-reply").on("click", function() {
-
     	$(this).parents('.jjreader-feed-item').find('.jjreader-reply-input').show();
     });
     
@@ -51,7 +50,7 @@
 
         type= "reply";
         status = "draft";
-        jjreader_post(reply_to, reply_to_title, reply_to_content, type, status, title, content, function(response){
+        jjreader_post(reply_to, reply_to_title, reply_to_content, type, status,title,content, function(response){
         	// This should return the post id as response
         });	
     });
@@ -172,7 +171,7 @@
 							// Create radio buttons to choose between feed options	
 							var radio_name = "jjreader-feedpicker_" + i;
 							var radio_btn = '<input type="radio" name="jjreader_feed_option" value="'+r_data+'" id="'+radio_name+'" checked>';
-							radio_btn += ' <label for="'+radio_name+'">'+r_data+'<span class="jjreader-feed-type">('+r_type+')</span></label><br>';
+							radio_btn += ' <label for="'+radio_name+'">'+r_data+'</label><br>';
 							$('.jjreader-feedpicker').append(radio_btn);
 							// Automatically set the feedurl to the first returned feed
 							/*if ($('.jjreader-feedpicker input').length ==1){
