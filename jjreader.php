@@ -28,6 +28,11 @@
 	(http://acegiak.machinespirit.net/2012/01/25/whisperfollow/).
 */ 
 
+/*
+ MF2 Parser by Barnaby Walters: https://github.com/indieweb/php-mf2
+*/
+
+
 defined( 'ABSPATH' ) or die( 'No script kiddies please!' );
 
 /* NOTE: If post kinds is installed, requiring Mf2 causes an error because it is already 
@@ -35,7 +40,7 @@ defined( 'ABSPATH' ) or die( 'No script kiddies please!' );
 * (can enqueue do this?)
 */ 
  
-//require_once 'lib/Mf2/Parser.php'; // For parsing h-feed
+require_once 'lib/Mf2/Parser.php'; // For parsing h-feed
 
 require 'lib/phpuri.php'; // For converting relative URIs to absolute 
 
@@ -298,7 +303,8 @@ function jjreader_subscription_viewer(){
 // Show interface for adding/removing/editing subscriptions
 function jjreader_subscription_editor(){
 	?>
-	<button id="jjreader-button-refresh" class="ui-state-default ui-corner-all" title=".ui-icon-arrowrefresh-1-e"><span class="ui-icon ui-icon-arrowrefresh-1-e"></span></button>
+	<button id="jjreader-button-refresh" class="ui-state-default ui-corner-all" title=".ui-icon-arrowrefresh-1-e">Refresh feed<span class="ui-icon ui-icon-arrowrefresh-1-e"></span></button>
+	<button id="jjreader-button-addSite" class="ui-button ui-corner-all ui-widget">Add Subscription</button>
 	<div id="jjreader-addSite-form" method="post" action="<?php echo str_replace( '%7E', '~', $_SERVER['REQUEST_URI']); ?>">
 		<strong>Add a subscription</strong><br>
         <label for="jjreader-siteurl">Site URL </label><input type="text" name="jjreader-siteurl" value="" size="30"><br>
@@ -309,7 +315,6 @@ function jjreader_subscription_editor(){
 		<label for="jjreader-sitetitle">Site Title </label><input type="text" name="jjreader-sitetitle" value="" size="30"><br>
 		<button id="jjreader-addSite-submit" class="ui-button ui-corner-all ui-widget">Submit</button>
 	</div>
-	<button id="jjreader-button-addSite" class="ui-button ui-corner-all ui-widget">Add Site</button>
 	<?php
 }
 
@@ -364,7 +369,7 @@ function jjreader_log($message){
 ** Add a post to the jjreader_posts table in the database
 */
 function add_reader_post($permalink,$title,$content,$authorname='',$authorurl='',$time=0,$avurl='',$siteurl){
-	jjreader_log("adding post: ".$permalink.": ".$title);
+	//jjreader_log("adding post: ".$permalink.": ".$title);
 	global $wpdb;
 	if($time < 1){
 		$time = time();
@@ -388,11 +393,11 @@ function add_reader_post($permalink,$title,$content,$authorname='',$authorurl=''
 		$title="";
 	} 
 	
+	//jjreader_log("content:  ". $clean_content);
+	//jjreader_log("title: ". $clean_title);	
+	//jjreader_log("strpos: ". strpos($clean_content,$clean_title));
+	//jjreader_log("strcmp title,content: ".strcmp($clean_title,$clean_content));
 	
-	jjreader_log("content:  ". $clean_content);
-	jjreader_log("title: ". $clean_title);	
-	jjreader_log("strpos: ". strpos($clean_content,$clean_title));
-	jjreader_log("strcmp title,content: ".strcmp($clean_title,$clean_content));
 	// Add the post (if it doesn't already exist)
 	$table_name = $wpdb->prefix . "jjreader_posts";
 	if($wpdb->get_var( "SELECT COUNT(*) FROM ".$table_name." WHERE permalink LIKE \"".$permalink."\";")<1){
@@ -412,22 +417,13 @@ function add_reader_post($permalink,$title,$content,$authorname='',$authorurl=''
 			 ) );
 		if($rows_affected == false){
 			jjreader_log("could not insert post into database!");
-			die("could not insert post into database!");
+			die("could not insert post into database!" .$permalink.": ".$title);
 		}else{
-			jjreader_log("added ".$title." from ".$authorurl);
+			jjreader_log("added ".$permalink.": ".$title);
 		}
 	}else{
-		jjreader_log("duplicate detected");
-	}
-	
-	
-	
-	
-
-	
-	
-	
-	
+		//jjreader_log("post already exists: " .$permalink.": ".$title);
+	}	
 }
 
 // Add a new subscription
@@ -463,12 +459,11 @@ function jjreader_new_subscription($siteurl, $feedurl, $sitetitle, $feedtype){
 			echo "Success! Added subscription: ". $feedurl. " @ ". $sitetitle;
 		}
 	}else{
-		jjreader_log("This subscription already exists");
+		jjreader_log("You are already subscribed to " . $feedurl);
 		echo "You are already subscribed to " . $feedurl;
 	}
 	wp_die(); // this is required to terminate immediately and return a proper response
 }
-
 
 /*
 ** Post a response to an item from the feed
@@ -482,8 +477,12 @@ function jjreader_response ($response_type, $in_reply_to, $reply_to_title, $repl
 	$post_title = $_POST['title'];
 	$post_content = $_POST['content'];
 
-	
+
 	jjreader_log("Response: " . $response_type . " — " . $in_reply_to);
+	jjreader_log("[".$response_type."]");
+
+	jjreader_log("post_title: ". $post_title);
+	jjreader_log("post_content: ". $post_content);
 
 	//If the post has a title, then we will use the title for display. If not, use the url
 	// for display
@@ -494,14 +493,8 @@ function jjreader_response ($response_type, $in_reply_to, $reply_to_title, $repl
 	}
 	$attribution = '<em><a href="'.$in_reply_to.'">'.$display_title.'</a></em>';
 
-
-	if ($response_type == "like"){
-
-		$content = "Liked " . $attribution;
-		$title = "";
-		$post_type = "link";
-		$post_kind = "like";
-	} elseif ($response_title == "reply" ){
+	if ($response_type == "reply" ){
+		jjreader_log("response type = reply");
 		$content = "Reply to " . $attribution . "<br><br>"; 
 		$content .= $post_content;
 		$title = $post_title;
@@ -514,12 +507,17 @@ function jjreader_response ($response_type, $in_reply_to, $reply_to_title, $repl
 			$post_type = "aside";
 			$post_kind = "note";		
 		}
+	} elseif ($response_type == "like"){
+		$content = "Liked " . $attribution;
+		$title = "Liked ". $display_title;
+		$post_type = "link";
+		$post_kind = "like";
+	} 
 
+	jjreader_log("title: ". $title);
+	jjreader_log("content: ". $content);
 
-	}
-
-
-	jjreader_log(" posting response");
+	jjreader_log("posting response");
 	$my_post = array(
 		'post_title' => $title,
 		'post_content' => $content,
@@ -534,31 +532,23 @@ function jjreader_response ($response_type, $in_reply_to, $reply_to_title, $repl
 	
 	// If the post kinds plugin is installed, set the post kind
 	if (function_exists('set_post_kind')){
-		set_post_kind( $the_post_id , $post_kind);
+		/* Assign a kind to a post
+		 	This uses the set_post_kind function, which is part of the post kinds plugin. 
+			Do this in the form "set_post_kind( $post, $kind)"
+				 See below for notes:
+				 * @param int|object $post The post for which to assign a kind.
+				 * @param string     $kind A kind to assign. Using an empty string or array will default to note.
+				 * @return mixed WP_Error on error. Array of affected term IDs on success.
+				 
+			//function set_post_kind( $post, $kind ) {
+			//   return Kind_Taxonomy::set_post_kind( $post, $kind );
+			//	}
+		*/ 
+ 		set_post_kind( $the_post_id , $post_kind);
 	}
 	
 	echo $the_post_id;
-	wp_die(); // this is required to terminate immediately and return a proper response
-	
-	/*
-	After a post has been created, assign a post kind if applicable
-	
-	*/
-	/**
- * Assign a kind to a post
- *
- 
- This uses the set_post_kind function, which is part of the post kinds plugin. 
-	Do this in the form "set_post_kind( $post, $kind)"
-
- See below for notes:
- * @param int|object $post The post for which to assign a kind.
- * @param string     $kind A kind to assign. Using an empty string or array will default to note.
- * @return mixed WP_Error on error. Array of affected term IDs on success.
- */
-	//function set_post_kind( $post, $kind ) {
-	//   return Kind_Taxonomy::set_post_kind( $post, $kind );
-	//	}
+	wp_die($the_post_id); // this is required to terminate immediately and return a proper response
 }
 
 /*
@@ -578,27 +568,83 @@ function jjreader_findFeeds($siteurl){
 		$thetitle = $dom->getElementsByTagName("title");
 		//echo $thetitle[0]->nodeValue;
 		$returnArray[] = array("type"=>"title", "data"=>$thetitle[0]->nodeValue);
+		
+		
 		$website_links = $dom->getElementsByTagName("link");
+		// Check for feeds as <link> elements
+		$found_hfeed = FALSE; 
+
 		if($website_links->length > 0){
 			foreach($website_links as $row){
 				if ($row->getAttribute("type")=='application/rss+xml'||
 					$row->getAttribute("type")=='application/atom+xml'||
-					$row->getAttribute("type")=='text/xml') {
-					
+					$row->getAttribute("type")=='text/xml' ) {
 					// Convert relative feed URL to absolute URL if needed
 					$feedurl = phpUri::parse($siteurl)->join($row->getAttribute("href"));
 					//Return the feed type and absolute feed url 
 					$returnArray[] = array("type"=>$row->getAttribute("type"), "data"=>$feedurl);
-					
+				}
+				elseif($row->getAttribute("type")=='text/html'){
+					$returnArray[] = array("type"=>"h-feed", "data"=>$feedurl);
+					$found_hfeed = TRUE; 
 				}
 			}
-			// Also here check for h-feed in the actual html
-			// If h-feed is found return (type="h-feed", data= "site url?"
 		}
+
+		// Also here check for h-feed in the actual html
+			//$html = '<a class="h-card" href="https://waterpigs.co.uk/">Barnaby Walters</a>';
+			//$mf = Mf2\fetch($siteurl);
+			$mf = Mf2\parse($html,$siteurl);
+			$output_log ="Output: ";
+
+			foreach ($mf['items'] as $microformat) {
+				if ($found_hfeed == FALSE) {
+					if ("{$microformat['type'][0]}"=="h-feed"||  // check 1
+						"{$microformat['type'][0]}"=="h-entry"){
+						//Found an h-feed (probably)
+						$returnArray[] = array("type"=>"h-feed", "data"=>$siteurl);
+						$found_hfeed = TRUE; 
+					} else {
+						foreach($item->children as $child){
+							if ($found_hfeed == FALSE) {
+								if ("{$microformat['type'][0]}"=="h-feed"|| // check 1
+									"{$microformat['type'][0]}"=="h-entry"){
+									//Found an h-feed (probably)
+									$returnArray[] = array("type"=>"h-feed", "data"=>$siteurl);
+									$found_hfeed = TRUE; 
+								}
+							}
+						}
+					}
+				}
+
+				$output_log .= "A {$microformat['type'][0]} called {$microformat['properties']['name'][0]}\n";
+			}
+			jjreader_log($output_log);
+
+			/*
+			//$output = Mf2\parse($html,$siteurl);
+			$output = Mf2\fetch($siteurl);
+			//jjreader_log("MF2 results: ".serialize($output));
+			$output_log ="Output: ";
+			foreach($output->items as $item){
+				$output_log .= "<br>". $item->type;
+				if($item->type == "h-entry"){
+					//Found an h-feed
+					$returnArray[] = array("type"=>"h-feed", "data"=>$siteurl);
+				}
+			}
+			jjreader_log($output_log);
+		// If h-feed is found return (type="h-feed", data= "site url?"
+		*/
 		echo json_encode($returnArray);
 	}
 	wp_die(); // this is required to terminate immediately and return a proper response
 }
+
+
+
+
 
 /*
 ** Defines the interval for the cron job (5 minutes) 
@@ -623,7 +669,7 @@ function jjreader_aggregator() {
 	foreach( $wpdb->get_results("SELECT * FROM ".$table_following.";") as $key => $row) {
 		$feedurl = $row->feedurl;
 		$siteurl = $row->siteurl;
-		jjreader_log("checking for new posts in ". $feedurl);
+		//jjreader_log("checking for new posts in ". $feedurl);
 		$feed = jjreader_fetch_feed($feedurl);
 		
 		if(is_wp_error($feed)){
@@ -631,7 +677,7 @@ function jjreader_aggregator() {
 			trigger_error($feed->get_error_message());
 			jjreader_log("Feed read Error: ".$feed->get_error_message());
 		} else {
-			jjreader_log("Feed read success.");
+			//jjreader_log("Feed read success.");
 		}
 		$feed->enable_cache(false);
 		$feed->strip_htmltags(false);   
@@ -668,7 +714,7 @@ function jjreader_fetch_feed($url) {
 	require_once (ABSPATH . WPINC . '/class-feed.php');
 
 	$feed = new SimplePie();
-	jjreader_log("Url is fetchable");
+	//jjreader_log("Url is fetchable");
 		$feed->set_feed_url($url);
 		$feed->set_cache_class('WP_Feed_Cache');
 		$feed->set_file_class('WP_SimplePie_File');
@@ -722,6 +768,5 @@ add_action( 'plugins_loaded', 'jjreader_update_db_check' );
 
 /* Hook to display admin notice */ 
 add_action( 'admin_notices', 'initial_setup_admin_notice' );
-
 	
 ?>
