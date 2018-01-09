@@ -48,6 +48,7 @@ require 'lib/phpuri.php'; // For converting relative URIs to absolute
 global $jjreader_db_version;
 $jjreader_db_version = "1.0a";
 
+
 /* Enqueue scripts and styles for the reader page */ 
 add_action( 'wp_enqueue_scripts', 'jjreader_enqueue_scripts' );
 function jjreader_enqueue_scripts() {
@@ -577,14 +578,17 @@ function jjreader_findFeeds($siteurl){
 
 		if($website_links->length > 0){
 			foreach($website_links as $row){
-				if ($row->getAttribute("type")=='application/rss+xml'||
-					$row->getAttribute("type")=='application/atom+xml'||
-					$row->getAttribute("type")=='text/xml' ) {
+				if (isRSS($row->getAttribute("type"))){
 					// Convert relative feed URL to absolute URL if needed
 					$feedurl = phpUri::parse($siteurl)->join($row->getAttribute("href"));
 					//Return the feed type and absolute feed url 
 					$returnArray[] = array("type"=>$row->getAttribute("type"), "data"=>$feedurl);
 				}
+				/*if ($row->getAttribute("type")=='application/rss+xml'||
+					$row->getAttribute("type")=='application/atom+xml'||
+					$row->getAttribute("type")=='text/xml' ) {
+
+				}*/
 				elseif($row->getAttribute("type")=='text/html'){
 					$returnArray[] = array("type"=>"h-feed", "data"=>$feedurl);
 					$found_hfeed = TRUE; 
@@ -672,39 +676,47 @@ function jjreader_aggregator() {
 	//Iterate through each item in the 'following' table.
 	foreach( $wpdb->get_results("SELECT * FROM ".$table_following.";") as $key => $row) {
 		$feedurl = $row->feedurl;
+		$feedtype = $row->feedtype;
 		$siteurl = $row->siteurl;
 		//jjreader_log("checking for new posts in ". $feedurl);
-		$feed = jjreader_fetch_feed($feedurl);
+		if (isRss($feedtype)){
+			$feed = jjreader_fetch_feed($feedurl,$feedtype);
 		
-		if(is_wp_error($feed)){
-			jjreader_log($feed->get_error_message());
-			trigger_error($feed->get_error_message());
-			jjreader_log("Feed read Error: ".$feed->get_error_message());
-		} else {
-			//jjreader_log("Feed read success.");
-		}
-		$feed->enable_cache(false);
-		$feed->strip_htmltags(false);   
-		//jjreader_log("<br/>Feed object:");
-		//jjreader_log(print_r($feed,true));
-		$items = $feed->get_items();
-
-		//jjreader_log(substr(print_r($items,true),0,500));
-		//jjreader_log("<br/>items object:");
-		usort($items,'date_sort');
-		
-		foreach ($items as $item){
-			try{
-				//jjreader_log("got ".$item->get_title()." from ". $item->get_feed()->get_title()."<br/>");
-				add_reader_post($item->get_permalink(),$item->get_title(),html_entity_decode ($item->get_description()),$item->get_feed()->get_title(),$item->get_feed()->get_link(),$item->get_date("U"),$siteurl);
-			}catch(Exception $e){
-				jjreader_log("Exception occured: ".$e->getMessage());
+			if(is_wp_error($feed)){
+				jjreader_log($feed->get_error_message());
+				trigger_error($feed->get_error_message());
+				jjreader_log("Feed read Error: ".$feed->get_error_message());
+			} else {
+				//jjreader_log("Feed read success.");
 			}
+			$feed->enable_cache(false);
+			$feed->strip_htmltags(false);   
+			//jjreader_log("<br/>Feed object:");
+			//jjreader_log(print_r($feed,true));
+			$items = $feed->get_items();
+
+			//jjreader_log(substr(print_r($items,true),0,500));
+			//jjreader_log("<br/>items object:");
+			usort($items,'date_sort');
+			
+			foreach ($items as $item){
+				try{
+					//jjreader_log("got ".$item->get_title()." from ". $item->get_feed()->get_title()."<br/>");
+					add_reader_post($item->get_permalink(),$item->get_title(),html_entity_decode ($item->get_description()),$item->get_feed()->get_title(),$item->get_feed()->get_link(),$item->get_date("U"),$siteurl);
+				}catch(Exception $e){
+					jjreader_log("Exception occured: ".$e->getMessage());
+				}
+			}
+
+		} elseif ($feedtype == "h-feed"){
+			jjreader_log ($feedurl . " is an h-feed");
+
 		}
+		
 		
 		remove_filter( 'wp_feed_cache_transient_lifetime', 'jjreader_feed_time' );
 	}
-	jjreader_log('No feed defined');
+	//jjreader_log('No feed defined');
 		
 	// TO DO: Clean up old posts
 	
@@ -714,9 +726,8 @@ function jjreader_aggregator() {
 /*
 ** Fetch a feed and return its content
 */
-function jjreader_fetch_feed($url) {
+function jjreader_fetch_feed($url,$feedtype) {
 	require_once (ABSPATH . WPINC . '/class-feed.php');
-
 	$feed = new SimplePie();
 	//jjreader_log("Url is fetchable");
 		$feed->set_feed_url($url);
@@ -741,6 +752,15 @@ function jjreader_fetch_feed($url) {
 			//jjreader_log('simplepie-error-empty: '.print_r($feed,true).'<br/><code>'.htmlspecialchars ($url).'</code>');
 		}
 	return $feed;
+}
+
+/* Returns true is the feed is of type rss */
+
+function isRSS($feedtype){
+	$rssTypes = array ('application/rss+xml','application/atom+xml','application/rdf+xml','application/xml','text/xml','text/xml','text/rss+xml','text/atom+xml');
+    if (in_array($feedtype,$rssTypes)){
+    	return True;
+    }
 }
 
 
