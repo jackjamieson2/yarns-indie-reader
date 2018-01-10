@@ -1,6 +1,7 @@
 <?php 
 	/* Display plugin information on the admin screen */ 
 	
+        
 
 
     if($_POST['jjreader_hidden'] == 'Y') {

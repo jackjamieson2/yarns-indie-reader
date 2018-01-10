@@ -100,7 +100,7 @@ function jjreader_install() {
 
 	//Set up cron job to check for posts
 	if ( !wp_next_scheduled( 'jjreader_generate_hook' ) ) {            
-		wp_schedule_event( time(), 'fivemins', 'jjreader_generate_hook' );
+		wp_schedule_event( time(), 'twentymins', 'jjreader_generate_hook' );
 	}
 	//Flush rewrite rules - see: https://codex.wordpress.org/Function_Reference/flush_rewrite_rules
 	flush_rewrite_rules( false );
@@ -630,21 +630,6 @@ function jjreader_findFeeds($siteurl){
 			}
 			jjreader_log($output_log);
 
-			/*
-			//$output = Mf2\parse($html,$siteurl);
-			$output = Mf2\fetch($siteurl);
-			//jjreader_log("MF2 results: ".serialize($output));
-			$output_log ="Output: ";
-			foreach($output->items as $item){
-				$output_log .= "<br>". $item->type;
-				if($item->type == "h-entry"){
-					//Found an h-feed
-					$returnArray[] = array("type"=>"h-feed", "data"=>$siteurl);
-				}
-			}
-			jjreader_log($output_log);
-		// If h-feed is found return (type="h-feed", data= "site url?"
-		*/
 		echo json_encode($returnArray);
 	}
 	wp_die(); // this is required to terminate immediately and return a proper response
@@ -660,6 +645,11 @@ function jjreader_findFeeds($siteurl){
 function jjreader_cron_definer($schedules){
 	$schedules['fivemins'] = array(
 		'interval'=> 300,
+		'display'=>  __('Once Every 5 Minutes')
+	);
+
+	$schedules['twentymins'] = array(
+		'interval'=> 1200,
 		'display'=>  __('Once Every 5 Minutes')
 	);
 	return $schedules;
@@ -710,8 +700,9 @@ function jjreader_aggregator() {
 
 		} elseif ($feedtype == "h-feed"){
 			jjreader_log ($feedurl . " is an h-feed");
-
 		}
+
+		
 		
 		
 		remove_filter( 'wp_feed_cache_transient_lifetime', 'jjreader_feed_time' );
@@ -724,18 +715,18 @@ function jjreader_aggregator() {
 }
 
 /*
-** Fetch a feed and return its content
+** Fetch an RSS FEED and return its content
 */
 function jjreader_fetch_feed($url,$feedtype) {
 	require_once (ABSPATH . WPINC . '/class-feed.php');
 	$feed = new SimplePie();
 	//jjreader_log("Url is fetchable");
-		$feed->set_feed_url($url);
-		$feed->set_cache_class('WP_Feed_Cache');
-		$feed->set_file_class('WP_SimplePie_File');
-		$feed->set_cache_duration(30);
-		$feed->enable_cache(false);
-		$feed->set_useragent('Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/535.7 (KHTML, like Gecko) Chrome/16.0.912.77 Safari/535.7');//some people don't like us if we're not a real boy	
+	$feed->set_feed_url($url);
+	$feed->set_cache_class('WP_Feed_Cache');
+	$feed->set_file_class('WP_SimplePie_File');
+	$feed->set_cache_duration(30);
+	$feed->enable_cache(false);
+	$feed->set_useragent('Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/535.7 (KHTML, like Gecko) Chrome/16.0.912.77 Safari/535.7');//some people don't like us if we're not a real boy	
 	$feed->init();
 	$feed->handle_content_type();
 	
@@ -753,6 +744,118 @@ function jjreader_fetch_feed($url,$feedtype) {
 		}
 	return $feed;
 }
+
+/*
+** Fetch an H-FEED and return its content
+*/
+function jjreader_fetch_hfeed($url,$feedtype) {
+	//Parse microformats at the feed-url
+	$mf = Mf2\fetch($url);
+	//Identify the h-feed within the parsed MF2
+	$hfeed = "";
+	$hfeed_path = "children"; // (default) in most cases, items within the h-feed will be 'children' 
+	//Check if one of the top-level items is an h-feed
+	foreach ($mf['items'] as $mf_item) {
+		if ($hfeed == "") {
+			if ("{$mf_item['type'][0]}"=="h-feed"){
+				$hfeed = $mf_item;	
+				jjreader_log("h-feed found: 1");
+			
+			} else {
+				//If h-feed has not been found, check for a child-level h-feed
+				foreach($mf_item['children'] as $child){
+					if ($hfeed == "") {
+						if ("{$child['type'][0]}"=="h-feed"){
+							$hfeed = $child;	
+							jjreader_log("h-feed found: 2");			
+						}
+					}
+				}
+			}
+		}
+	}
+	//If no h-feed was found, check for h-entries. If h-entry is found, then consider its parent the h-feed
+	foreach ($mf['items'] as $mf_item) {
+		if ($hfeed == "") {
+			if ("{$mf_item['type'][0]}"=="h-entry"){
+				$hfeed = $mf;		
+				$hfeed_path	="items";
+				jjreader_log("h-feed found: 3");
+			} else {
+				//If h-entries have not been found, check for a child-level h-entry
+				foreach($mf_item['children'] as $child){
+					if ($hfeed == "") {
+						if ("{$child['type'][0]}"=="h-entry"){
+							$hfeed = $mf_item;		
+							jjreader_log("h-feed found: 4");		
+						}
+					}
+				}
+			}
+		}
+	}
+
+	//At this point, only proceed if h-feed has been found
+	if ($hfeed == "") {
+		//do nothing
+		jjreader_log("no h-feed found");
+	} else {
+		return array('feed'=>$hfeed, 'path'=>$hfeed_path);
+	}
+		// parse the h-feed
+		$feed = jjreader_fetch_hfeed($feedurl,$feedtype);
+			$hfeed = $feed['feed'];
+			$hfeed_path = $feed['path'];
+			foreach ($hfeed[$hfeed_taxonomy] as $item) {
+				//handle h-entry
+				if ("{$item['type'][0]}" == "h-entry"){
+					jjreader_log ("found h-entry");
+					jjreader_log("{$item['properties']['url'][0]}");
+					$hfeed_items [] = array (
+						"type"=>"{$item['type'][0]}",
+						"name"=>"{$item['properties']['name'][0]}",
+						"summary"=>"{$item['properties']['summary'][0]}",
+						"content"=>"{$item['properties']['content'][0]}",
+						"published"=>"{$item['properties']['published'][0]}",
+						"updated"=>"{$item['properties']['updated'][0]}",
+						"author"=>"{$item['properties']['author'][0]}",
+						"url"=>"{$item['properties']['url'][0]}",
+						"uid"=>"{$item['properties']['uid'][0]}",
+						"location"=>"{$item['properties']['location'][0]}",
+						"syndication"=>"{$item['properties']['syndication'][0]}",
+						"in-reply-to"=>"{$item['properties']['in-reply-to'][0]}",
+						"rsvp"=>"{$item['properties']['rsvp'][0]}",
+						"like-of"=>"{$item['properties']['like-of'][0]}",
+						"repost-of"=>"{$item['properties']['repost-of'][0]}",
+						);
+				}
+
+				//handle h-event
+				if ("{$item['type'][0]}" == "h-event"){
+					jjreader_log ("found h-event");
+					jjreader_log("{$item['properties']['url'][0]}");
+
+				$hfeed_items [] = array (
+					"type"=>"{$item['type'][0]}",
+					"name"=>"{$item['properties']['name'][0]}",
+					"summary"=>"{$item['properties']['summary'][0]}",
+					"start"=>"{$item['properties']['start'][0]}",
+					"end"=>"{$item['properties']['end'][0]}",
+					"duration"=>"{$item['properties']['duration'][0]}",
+					"description"=>"{$item['properties']['description'][0]}",
+					"url"=>"{$item['properties']['url'][0]}",
+					"category"=>"{$item['properties']['category'][0]}",
+					"location"=>"{$item['properties']['location'][0]}"
+					);
+					
+			}
+		
+		return $hfeed_items;
+	}
+	return "h-feed found";
+}
+
+
 
 /* Returns true is the feed is of type rss */
 
@@ -779,12 +882,12 @@ function jjreader_deactivate() {
 /* Functions to run upon installation */ 
 register_activation_hook(__FILE__,'jjreader_install');
 register_activation_hook(__FILE__,'jjreader_create_tables');
+add_filter('cron_schedules','jjreader_cron_definer');
+add_action( 'jjreader_generate_hook', 'jjreader_aggregator' );
 
 /* Functions to run upon deactivation */ 
 register_deactivation_hook( __FILE__, 'jjreader_deactivate' );
 
-add_filter('cron_schedules','jjreader_cron_definer');
-add_action( 'jjreader_generate_hook', 'jjreader_aggregator' );
 
 
 /* Check if the database version has changed when plugin is updated */ 
