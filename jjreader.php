@@ -50,7 +50,7 @@ if ( ! class_exists( 'phpUri' ) ) {
 
 
 global $jjreader_db_version;
-$jjreader_db_version = "1.0a";
+$jjreader_db_version = "1.4"; // Updated database structure
 
 
 /* Enqueue scripts and styles for the reader page */ 
@@ -58,7 +58,6 @@ add_action( 'wp_enqueue_scripts', 'jjreader_enqueue_scripts' );
 function jjreader_enqueue_scripts() {
 	wp_enqueue_script( 'jquery-ui', plugin_dir_url( __FILE__ ).'jqueryUI/jquery-ui.min.js', array('jquery'), null, true);
 	wp_enqueue_script( 'jjreader_js', plugin_dir_url( __FILE__ ).'js/jjreader.js', array('jquery'), null, true);
-	
 
 	wp_enqueue_style( 'jquery-ui-style', plugin_dir_url( __FILE__ ).'jqueryUI/jquery-ui.min.css' );
 	wp_enqueue_style( 'jjreader-style', plugin_dir_url( __FILE__ ).'css/jjreader.css' );
@@ -154,28 +153,35 @@ function jjreader_create_tables() {
 
 	$sql = "CREATE TABLE " . $table_posts . " (
 		id int NOT NULL AUTO_INCREMENT,
-		date datetime DEFAULT '0000-00-00 00:00:00' NOT NULL,
+		feedid int DEFAULT 0 NOT NULL,
+		sitetitle text DEFAULT '' NOT NULL,
+		siteurl text DEFAULT '' NOT NULL,
+		title text DEFAULT '' ,
+		summary mediumtext DEFAULT '' ,
+		content mediumtext DEFAULT '' NOT NULL,
+		published datetime DEFAULT '0000-00-00 00:00:00' NOT NULL,
+		updated datetime DEFAULT '0000-00-00 00:00:00' ,
 		authorname text DEFAULT '' NOT NULL,
 		authorurl text DEFAULT '' NOT NULL,
-		authoravurl text DEFAULT '' NOT NULL,
+		authoravurl text DEFAULT '' ,
 		permalink text DEFAULT '' NOT NULL,
-		title text DEFAULT '' NOT NULL,
-		content mediumtext DEFAULT '' NOT NULL,
+		location text DEFAULT '' ,
+		photo text DEFAULT '' ,
 		posttype text DEFAULT '' NOT NULL,
 		viewed boolean DEFAULT FALSE NOT NULL,
-		liked text DEFAULT '' NOT NULL,
-		replied text DEFAULT '' NOT NULL,
-		reposted text DEFAULT '' NOT NULL,
-		rsvped text DEFAULT '' NOT NULL,
+		liked text DEFAULT '' ,
+		replied text DEFAULT '' ,
+		reposted text DEFAULT '' ,
+		rsvped text DEFAULT '' ,
 		PRIMARY KEY id (id)
 	);";
 	
 	require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
 	dbDelta($sql);
 	jjreader_log("Created jjreader_posts table");
-		
-	add_option( 'jjreader_db_version', $jjreader_db_version );
-	jjreader_log("Updated jjreader_db_version field");
+	jjreader_log("updating db version from ".get_site_option('jjreader_db_version')." to ". $jjreader_db_version);
+	update_option( 'jjreader_db_version', $jjreader_db_version );
+	jjreader_log("updated db version to ". get_site_option('jjreader_db_version'));
 }
 
 
@@ -260,7 +266,7 @@ function jjreader_subscription_viewer(){
 	$items = $wpdb->get_results(
 		'SELECT * 
 		FROM  `'.$wpdb->prefix . 'jjreader_posts` 
-		ORDER BY  `date` DESC 
+		ORDER BY  `published` DESC 
 		LIMIT '.($fpage*$length).' , '.$length.';'
 	);
 	      
@@ -270,12 +276,18 @@ function jjreader_subscription_viewer(){
 	//Iterate through all the posts in the database. Display the first 15 
 	if ( !empty( $items ) ) { 
 		foreach ( $items as $item ) {
+			if ($item->posttype=="h-event"){
+				$display_type = "Event";
+			}
+
+			//$the_feed = $wpdb->get_results( "SELECT * FROM ".$jjreader_following." WHERE id = \"".$feed_id."\";");
 			?>
 			<div class="jjreader-feed-item">
 				<div class="jjreader-item-meta">		
 					<?php
-					echo '<a class="jjreader-item-authorname" href="'.$item->authorurl.'">'.$item->authorname.'</a> ';
-					echo '<a class="jjreader-item-date" href="'.$item->permalink.'">at '.$item->date.'</a>';
+					echo '<a class="jjreader-item-authorname" href="'.$item->siteurl.'">'.$item->sitetitle.'</a> ';
+					echo '<a class="jjreader-item-date" href="'.$item->permalink.'">at '.$item->published.'</a>';
+					echo '<span class="jjreader-item-type">'.$display_type.'</span>';
 					?>
 				</div>
 
@@ -289,7 +301,7 @@ function jjreader_subscription_viewer(){
 				</div>
 				
 				<div class="jjreader-item-reponse">
-					<?php jjreader_reply_actions(); ?>
+					<?php jjreader_reply_actions($item->posttype); ?>
 				</div>
 
 
@@ -325,7 +337,8 @@ function jjreader_subscription_editor(){
 }
 
 // Show reply actions if the user has permission to create posts
-function jjreader_reply_actions($post_kinds){
+function jjreader_reply_actions($post_type){
+
 	// Check if post_kinds plugin is installed (https://wordpress.org/plugins/indieweb-post-kinds/)
 	// If so, set post_kinds to true, if not, set to false
 	if ( in_array( 'indieweb-post-kinds/indieweb-post-kinds.php', apply_filters( 'active_plugins', get_option( 'active_plugins' ) ) ) ) {
@@ -337,22 +350,25 @@ function jjreader_reply_actions($post_kinds){
 	if(current_user_can( 'publish_posts')){
 		?>
 		<button class="jjreader-like ui-button ui-corner-all ui-widget"><span class="ui-icon ui-icon-heart"></span>Like</button>
+
 		<button class="jjreader-reply ui-button ui-corner-all ui-widget"><span class="ui-icon ui-icon-arrowreturnthick-1-w"></span>Reply</button>
+		<?php 
+		if ($post_type=="h-event"){
+			?>
+		<span class ="jjreader-rsvp-buttons">RSVP: 
+			<button class="jjreader-rsvp-yes ui-button ui-corner-all ui-widget">Yes</button>
+			<button class="jjreader-rsvp-no ui-button ui-corner-all ui-widget">No</button>
+			<button class="jjreader-rsvp-interested ui-button ui-corner-all ui-widget">Interested</button>
+			<button class="jjreader-rsvp-yes ui-button ui-corner-all ui-widget">Maybe</button>
+		</span>
+		<?php } ?>
 		<div class="jjreader-reply-input jjreader-hidden">
 			<input class ="jjreader-reply-title" placeholder = "Enter a reply title (if desired)"></input>
 			<textarea class ="jjreader-reply-text" placeholder="Enter your reply here" ></textarea>
 			<button class="jjreader-reply-submit ui-button ui-corner-all ui-widget"><span class="ui-icon"></span>Submit</button>
 		</div>
+
 		<?php
-		/*
-		if ($post_kinds == true){
-			//If post_kinds is true, display response buttons using post-kinds
-			echo "Reply buttons with post kinds";
-		} else {
-			//If post_kinds is false, display reponse buttons without post-kinds	
-			echo "Reply buttons with no post kinds";
-		}
-		*/
 	}
 }
 
@@ -374,53 +390,54 @@ function jjreader_log($message){
 /*
 ** Add a post to the jjreader_posts table in the database
 */
-function add_reader_post($permalink,$title,$content,$authorname='',$authorurl='',$time=0,$avurl='',$siteurl){
-	//jjreader_log("adding post: ".$permalink.": ".$title);
+function add_reader_post($feedid,$title,$summary,$content,$published=0,$updated=0,$authorname='',$authorurl='',$avurl='',$permalink,$location,$photo,$type,$siteurl,$sitetitle){
+
+
+	jjreader_log("adding post: ".$permalink.": ".$title);
 	global $wpdb;
-	if($time < 1){
-		$time = time();
+	if($published < 1){
+		$published = time();
 	}
 	//If the author url is not known, then just use the site url
 	if (empty($authorurl)){$authorurl = $siteurl;}
-	
 	// If the content begins with the title, then the post is probably an aside, so 
-	// the title can be dropped. 	
+	// the title should be dropped. 	
 	$clean_title = html_entity_decode($title); // First convert html entities to text (to ensure consistent comparision)
 	$clean_title = strip_tags(rtrim($clean_title,".")); // remove trailing "..."
 	$clean_title = htmlentities($clean_title, ENT_QUOTES); // Convert quotation marks to HTML entities
 	$clean_title = str_replace(array("\r", "\n"), '', $clean_title); // remove line breaks from CONTENT
-	
 	$clean_content = html_entity_decode($content); // First convert html entities to text (to ensure consistent comparision)
 	$clean_content = strip_tags(trim($clean_content)); // remove white space on either side
 	$clean_content = htmlentities($clean_content, ENT_QUOTES); // Convert quotation marks to HTML entities
 	$clean_content = str_replace(array("\r", "\n"), '', $clean_content); // remove line breaks from CONTENT
-
 	if (strpos($clean_content,$clean_title)===0 ){
 		$title="";
 	} 
 	
-	//jjreader_log("content:  ". $clean_content);
-	//jjreader_log("title: ". $clean_title);	
-	//jjreader_log("strpos: ". strpos($clean_content,$clean_title));
-	//jjreader_log("strcmp title,content: ".strcmp($clean_title,$clean_content));
-	
 	// Add the post (if it doesn't already exist)
 	$table_name = $wpdb->prefix . "jjreader_posts";
 	if($wpdb->get_var( "SELECT COUNT(*) FROM ".$table_name." WHERE permalink LIKE \"".$permalink."\";")<1){
-		//jjreader_log("no duplicate found");
-		//jjreader_log("title->".$title." / permalink->".$permalink." / content->".$content." / authorname->".$authorname);
+
 		$rows_affected = $wpdb->insert( $table_name,
-			array(
-				'permalink' => $permalink,
+			array(	
+				'feedid'=>$feedid,
+				'sitetitle'=>$sitetitle,
+				'siteurl'=>$siteurl,
 				'title' => $title,
+				'summary'=> $summary,
 				'content' => $content,
+				'published'=> date( 'Y-m-d H:i:s', $published),
+				'updated'=> date( 'Y-m-d H:i:s', $updated),
 				'authorname' => $authorname,
 				'authorurl' => $authorurl,
-				'date' => date( 'Y-m-d H:i:s', $time),
 				'authoravurl' => $avurl,
+				'permalink' => $permalink,
+				'location'=> $location,
+				'photo'=> $photo,
+				'posttype' => $type,
 				'viewed' =>false,
-				'posttype' => "post" // This will need to be changed for events and other special kinds of posts
 			 ) );
+
 		if($rows_affected == false){
 			jjreader_log("could not insert post into database!");
 			die("could not insert post into database!" .$permalink.": ".$title);
@@ -428,11 +445,13 @@ function add_reader_post($permalink,$title,$content,$authorname='',$authorurl=''
 			jjreader_log("added ".$permalink.": ".$title);
 		}
 	}else{
-		//jjreader_log("post already exists: " .$permalink.": ".$title);
+		jjreader_log("post already exists: " .$permalink.": ".$title);
 	}	
 }
 
-// Add a new subscription
+/*
+** Add a new subscription
+*/ 
 add_action( 'wp_ajax_jjreader_new_subscription', 'jjreader_new_subscription' );
 //add_action( 'wp_ajax_read_me_later', array( $this, 'jjreader_new_subscription' ) );
 function jjreader_new_subscription($siteurl, $feedurl, $sitetitle, $feedtype){
@@ -671,9 +690,15 @@ function jjreader_aggregator() {
 	foreach( $wpdb->get_results("SELECT * FROM ".$table_following.";") as $key => $row) {
 		$feedurl = $row->feedurl;
 		$feedtype = $row->feedtype;
+		$sitetitle = $row->sitetitle;
 		$siteurl = $row->siteurl;
-		//jjreader_log("checking for new posts in ". $feedurl);
+		$feedid = $row->id;
+		jjreader_log("checking for new posts in ". $feedurl);
+
+		/****   RSS FEEDS ****/
 		if (isRss($feedtype)){
+			jjreader_log ($feedurl . " is an rss feed (or atom, etc)");
+
 			$feed = jjreader_fetch_feed($feedurl,$feedtype);
 		
 			if(is_wp_error($feed)){
@@ -681,40 +706,74 @@ function jjreader_aggregator() {
 				trigger_error($feed->get_error_message());
 				jjreader_log("Feed read Error: ".$feed->get_error_message());
 			} else {
-				//jjreader_log("Feed read success.");
+				jjreader_log("Feed read success.");
 			}
 			$feed->enable_cache(false);
 			$feed->strip_htmltags(false);   
-			//jjreader_log("<br/>Feed object:");
-			//jjreader_log(print_r($feed,true));
 			$items = $feed->get_items();
-
-			//jjreader_log(substr(print_r($items,true),0,500));
-			//jjreader_log("<br/>items object:");
 			usort($items,'date_sort');
-			
 			foreach ($items as $item){
+				jjreader_log("got ".$item->get_title()." from ". $item->get_feed()->get_title()."<br/>");
+				$title = $item->get_title();
+				$summary = html_entity_decode ($item->get_description());
+				$content = html_entity_decode ($item->get_content());
+				$published=$item->get_date("U");
+				$updated=0;
+				
+				// Several fallback options to set author name/site title
+				$authorname = $sitetitle;  // This uses the site title entered by the user (not the site title specified in the site feed)
+				$avurl='';
+				$permalink=$item->get_permalink();
+				$location='';
+				$photo='';//$item->get_image_tags();
+				$type='rss';
 				try{
-					//jjreader_log("got ".$item->get_title()." from ". $item->get_feed()->get_title()."<br/>");
-					add_reader_post($item->get_permalink(),$item->get_title(),html_entity_decode ($item->get_description()),$item->get_feed()->get_title(),$item->get_feed()->get_link(),$item->get_date("U"),$siteurl);
+					add_reader_post($feedid,$title,$summary,$content,$published,$updated,$authorname,$authorurl,$avurl,$permalink,$location,$photo,$type,$siteurl,$sitetitle);
 				}catch(Exception $e){
 					jjreader_log("Exception occured: ".$e->getMessage());
 				}
 			}
 
-		} elseif ($feedtype == "h-feed"){
+		} /****  H-FEEDS ****/ 
+		elseif ($feedtype == "h-feed"){
+			$feed = jjreader_fetch_hfeed($feedurl,$feedtype);
+			foreach ($feed as $item){
+				$log_entry = "<ol><li>feedid = ". $feedid ."</li>";
+				$log_entry .= "<li>title = ". $title ."</li>";
+				$log_entry .= "<li>content = ". $content ."</li>";
+				$log_entry .= "<li>published = ". $published ."</li>";
+				$log_entry .= "<li>updated = ". $updated ."</li>";
+				$log_entry .= "<li>authorname = ". $authorname ."</li>";
+				$log_entry .= "<li>authorurl = ". $authorurl ."</li>";
+				$log_entry .= "<li>avurl = ". $avurl ."</li>";
+				$log_entry .= "<li>permalink = ". $permalink ."</li>";
+				$log_entry .= "<li>location = ". $location ."</li>";
+				$log_entry .= "<li>photo = ". $photo ."</li>";
+				$log_entry .= "<li>type = ". $type ."</li>";
+				$log_entry .= "<li>siteurl = ". $siteurl ."</li></ol>";
+				jjreader_log($log_entry);
+
+				$permalink = $item['url'];
+				$title = $item['name'];
+				$content=$item['content'];
+				$authorname = $item['author'];
+				$authorurl = ""; // none for now — TO DO: Fetch avatar from h-card if possible, or just use siteurl
+				$time = $item['published'];
+				$avurl = ""; // none for now — TO DO: Fetch avatar from h-card if possible
+				$siteurl=$item['siteurl'];
+				$feedurl = $url;
+				$type = $item['type'];
+				try{
+					add_reader_post($feedid,$title,$summary,$content,$published,$updated,$authorname,$authorurl,$avurl,$permalink,$location,$photo,$type,$siteurl,$sitetitle);
+					//add_reader_post($permalink, $title, $content, $authorname, $authorurl, $time, $avurl, $siteurl, $feedurl, $type);
+				}catch(Exception $e){
+					jjreader_log("Exception occured: ".$e->getMessage());
+				}
+			}
 			jjreader_log ($feedurl . " is an h-feed");
 		}
-
-		
-		
-		
 		remove_filter( 'wp_feed_cache_transient_lifetime', 'jjreader_feed_time' );
 	}
-	//jjreader_log('No feed defined');
-		
-	// TO DO: Clean up old posts
-	
 	wp_die(); // this is required to terminate immediately and return a proper response
 }
 
@@ -804,56 +863,82 @@ function jjreader_fetch_hfeed($url,$feedtype) {
 		//do nothing
 		jjreader_log("no h-feed found");
 	} else {
-		return array('feed'=>$hfeed, 'path'=>$hfeed_path);
-	}
-		// parse the h-feed
-		$feed = jjreader_fetch_hfeed($feedurl,$feedtype);
-			$hfeed = $feed['feed'];
-			$hfeed_path = $feed['path'];
-			foreach ($hfeed[$hfeed_taxonomy] as $item) {
-				//handle h-entry
-				if ("{$item['type'][0]}" == "h-entry"){
-					jjreader_log ("found h-entry");
-					jjreader_log("{$item['properties']['url'][0]}");
-					$hfeed_items [] = array (
-						"type"=>"{$item['type'][0]}",
-						"name"=>"{$item['properties']['name'][0]}",
-						"summary"=>"{$item['properties']['summary'][0]}",
-						"content"=>"{$item['properties']['content'][0]}",
-						"published"=>"{$item['properties']['published'][0]}",
-						"updated"=>"{$item['properties']['updated'][0]}",
-						"author"=>"{$item['properties']['author'][0]}",
-						"url"=>"{$item['properties']['url'][0]}",
-						"uid"=>"{$item['properties']['uid'][0]}",
-						"location"=>"{$item['properties']['location'][0]}",
-						"syndication"=>"{$item['properties']['syndication'][0]}",
-						"in-reply-to"=>"{$item['properties']['in-reply-to'][0]}",
-						"rsvp"=>"{$item['properties']['rsvp'][0]}",
-						"like-of"=>"{$item['properties']['like-of'][0]}",
-						"repost-of"=>"{$item['properties']['repost-of'][0]}",
-						);
-				}
+		jjreader_log("Parsing h-feed at: ".$hpath);
+		$site_url = $url;
+		$counter = 0;
 
-				//handle h-event
-				if ("{$item['type'][0]}" == "h-event"){
-					jjreader_log ("found h-event");
-					jjreader_log("{$item['properties']['url'][0]}");
+		foreach ($hfeed[$hfeed_path] as $item) {
+			$counter ++;
+			jjreader_log("parsing h-feed item #".$counter.": "."{$item['properties']['name'][0]}");
+			$item_name = "{$item['properties']['name'][0]}";
+			$item_type = "{$item['type'][0]}";
+			$item_summary = "{$item['properties']['summary'][0]}";
+			$item_published = "{$item['properties']['published'][0]}";
+			$item_updated = "{$item['properties']['updated'][0]}";
+			$item_location = json_encode("{$item['properties']['location'][0]}");
+				//Note that location can be an h-card
+			$item_url = "{$item['properties']['url'][0]}";
+			$item_uid = "{$item['properties']['uid'][0]}";
+			$item_syndication = json_encode("{$item['properties']['syndication'][0]}");
+			$item_inreplyto = "{$item['properties']['in-reply-to'][0]}";
+			$item_author = "{$item['properties']['author'][0]}";
 
-				$hfeed_items [] = array (
-					"type"=>"{$item['type'][0]}",
-					"name"=>"{$item['properties']['name'][0]}",
-					"summary"=>"{$item['properties']['summary'][0]}",
-					"start"=>"{$item['properties']['start'][0]}",
-					"end"=>"{$item['properties']['end'][0]}",
-					"duration"=>"{$item['properties']['duration'][0]}",
-					"description"=>"{$item['properties']['description'][0]}",
-					"url"=>"{$item['properties']['url'][0]}",
-					"category"=>"{$item['properties']['category'][0]}",
-					"location"=>"{$item['properties']['location'][0]}"
-					);
-					
+				$log_entry = "<ol><li>item_name = ". $item_name ."</li>";
+				$log_entry .= "<li>item_type = ". $item_type ."</li>";
+				$log_entry .= "<li>item_summary = ". $item_summary ."</li>";
+				$log_entry .= "<li>item_published = ". $item_published ."</li>";
+				$log_entry .= "<li>item_updated = ". $item_updated ."</li>";
+				$log_entry .= "<li>item_location = ". $item_location ."</li>";
+				$log_entry .= "<li>item_url = ". $item_url ."</li>";
+				$log_entry .= "<li>item_uid = ". $item_uid ."</li>";
+				$log_entry .= "<li>item_syndication = ". $item_syndication ."</li>";
+				$log_entry .= "<li>item_inreplyto = ". $item_inreplyto ."</li>";
+				$log_entry .= "<li>item_author = ". $item_author ."</li>";
+				jjreader_log($log_entry);
+
+
+			//handle h-entry
+			if ("{$item['type'][0]}" == "h-entry"){
+				jjreader_log ("found h-entry");
+				jjreader_log("{$item['properties']['url'][0]}");
+				$item_content = "{$item['properties']['content'][0]['html']}";
 			}
-		
+
+			//handle h-event
+			if ("{$item['type'][0]}" == "h-event"){
+				jjreader_log ("found h-event");
+				jjreader_log("{$item['properties']['url'][0]}");
+
+				$item_featured = "{$item['properties']['featured'][0]}";
+				$item_content = "";
+				//When
+				//Where    //Note that location can be an h-card
+				//Host
+				//Summary
+				//Image
+			}
+
+			$hfeed_items [] = array (
+				"name"=>$item_name,
+				"type"=>$item_type,
+				"summary"=>$item_summary,
+				"content"=>$item_content,
+				"location"=>$item_location,
+				"published" =>$item_published,
+				"updated" =>$item_updated,
+				"url"=>$item_url,
+				"uid"=>$item_url,
+				"author"=>$item_author,
+				"syndication"=>$item_syndication,
+				"in-reply-to"=>$item_inreplyto,
+				"author"=>$item_author,
+				"featured"=>$item_featured,
+				"siteurl"=>$site_url
+			);
+		}
+
+		jjreader_log("hfeed items = " . json_decode($hfeed_items));
+
 		return $hfeed_items;
 	}
 	return "h-feed found";
@@ -864,8 +949,10 @@ function jjreader_fetch_hfeed($url,$feedtype) {
 /* Returns true is the feed is of type rss */
 
 function isRSS($feedtype){
+	jjreader_log("checking if ". $feedtype . " is an RSS feed.");
 	$rssTypes = array ('application/rss+xml','application/atom+xml','application/rdf+xml','application/xml','text/xml','text/xml','text/rss+xml','text/atom+xml');
     if (in_array($feedtype,$rssTypes)){
+    	jjreader_log("Success!");
     	return True;
     }
 }
