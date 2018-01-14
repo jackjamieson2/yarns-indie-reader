@@ -387,6 +387,53 @@ function jjreader_log($message){
 
 }
 
+/* 
+** Remove titles for posts where the title is equal to the content (e.g. notes, asides, microblogs)
+****
+**** In many rss feeds and h-feeds, the only indication of whether a title is redunant is that it duplicates 
+****
+*/
+function clean_the_title($title,$content,$content_plain=''){
+	jjreader_log("content vs title");
+	jjreader_log("content = ".$content);
+	jjreader_log("title = ".$title);
+
+	$clean_title = html_entity_decode($title); // First convert html entities to text (to ensure consistent comparision)
+	$clean_title = strip_tags(rtrim($clean_title,".")); // remove trailing "..."
+	$clean_title = strip_tags(trim($clean_title)); // remove white space on either side
+	$clean_title = htmlentities($clean_title, ENT_QUOTES); // Convert quotation marks to HTML entities
+	$clean_title = str_replace(array("\r", "\n"), '', $clean_title); // remove line breaks from title
+	$clean_title = str_replace("&nbsp;", "", $clean_title); // replace $nbsp; with a space character
+	$clean_title = str_replace(array("\r", "\n"), '', $clean_title); // remove line breaks from title
+	
+	$clean_content = html_entity_decode($content); // First convert html entities to text (to ensure consistent comparision)
+	$clean_content = strip_tags(rtrim($clean_content,".")); // remove trailing "..."
+	$clean_content = strip_tags(trim($clean_content)); // remove white space on either side
+	$clean_content = htmlentities($clean_content, ENT_QUOTES); // Convert quotation marks to HTML entities
+	$clean_content = str_replace("&nbsp;", "", $clean_content); // replace $nbsp; with a space character
+	$clean_content = str_replace(array("\r", "\n"), '', $clean_content); // remove line breaks from CONTENT
+	jjreader_log("clean_content vs clean_title");
+	jjreader_log("clean_content = " .$clean_content);
+	jjreader_log("clearn_title = " . $clean_title);
+	if (strpos($clean_content,$clean_title)===0 ){
+		$title="";
+	} 
+
+	// Also compare to content_plain if it exists.  ($content_plain is a plain text version, whereas $content has html)
+	if ($content_plain != ''){
+		$clean_content = html_entity_decode($content_plain); // First convert html entities to text (to ensure consistent comparision)
+		$clean_content = strip_tags(rtrim($clean_content,".")); // remove trailing "..."
+		$clean_content = strip_tags(trim($clean_content)); // remove white space on either side
+		$clean_content = htmlentities($clean_content, ENT_QUOTES); // Convert quotation marks to HTML entities
+		$clean_content = str_replace("&nbsp;", "", $clean_content); // replace $nbsp; with a space character
+		$clean_content = str_replace(array("\r", "\n"), '', $clean_content); // remove line breaks from CONTENT
+		jjreader_log("COMPARISON #2: plain content: [". $clean_content . "] and title: [".$clean_title."]");
+		if (strpos($clean_content,$clean_title)===0 ){
+			$title="";
+		} 
+	}
+	return $title;
+}
 /*
 ** Add a post to the jjreader_posts table in the database
 */
@@ -395,24 +442,16 @@ function add_reader_post($feedid,$title,$summary,$content,$published=0,$updated=
 
 	jjreader_log("adding post: ".$permalink.": ".$title);
 	global $wpdb;
+	jjreader_log("published = " . $published);
 	if($published < 1){
 		$published = time();
 	}
+	jjreader_log("published (checkpoint 2) = " . $published);
 	//If the author url is not known, then just use the site url
 	if (empty($authorurl)){$authorurl = $siteurl;}
 	// If the content begins with the title, then the post is probably an aside, so 
 	// the title should be dropped. 	
-	$clean_title = html_entity_decode($title); // First convert html entities to text (to ensure consistent comparision)
-	$clean_title = strip_tags(rtrim($clean_title,".")); // remove trailing "..."
-	$clean_title = htmlentities($clean_title, ENT_QUOTES); // Convert quotation marks to HTML entities
-	$clean_title = str_replace(array("\r", "\n"), '', $clean_title); // remove line breaks from CONTENT
-	$clean_content = html_entity_decode($content); // First convert html entities to text (to ensure consistent comparision)
-	$clean_content = strip_tags(trim($clean_content)); // remove white space on either side
-	$clean_content = htmlentities($clean_content, ENT_QUOTES); // Convert quotation marks to HTML entities
-	$clean_content = str_replace(array("\r", "\n"), '', $clean_content); // remove line breaks from CONTENT
-	if (strpos($clean_content,$clean_title)===0 ){
-		$title="";
-	} 
+	
 	
 	// Add the post (if it doesn't already exist)
 	$table_name = $wpdb->prefix . "jjreader_posts";
@@ -539,8 +578,8 @@ function jjreader_response ($response_type, $in_reply_to, $reply_to_title, $repl
 		$post_kind = "like";
 	} 
 
-	jjreader_log("title: ". $title);
-	jjreader_log("content: ". $content);
+	//jjreader_log("title: ". $title);
+	//jjreader_log("content: ". $content);
 
 	jjreader_log("posting response");
 	$my_post = array(
@@ -713,13 +752,16 @@ function jjreader_aggregator() {
 			$items = $feed->get_items();
 			usort($items,'date_sort');
 			foreach ($items as $item){
-				jjreader_log("got ".$item->get_title()." from ". $item->get_feed()->get_title()."<br/>");
+				//jjreader_log("got ".$item->get_title()." from ". $item->get_feed()->get_title()."<br/>");
 				$title = $item->get_title();
+
+
 				$summary = html_entity_decode ($item->get_description());
 				$content = html_entity_decode ($item->get_content());
 				$published=$item->get_date("U");
 				$updated=0;
-				
+				//Remove the title if it is equal to the post content (e.g. asides, notes, microblogs)
+				$title = clean_the_title($title,$content);
 				// Several fallback options to set author name/site title
 				$authorname = $sitetitle;  // This uses the site title entered by the user (not the site title specified in the site feed)
 				$avurl='';
@@ -738,31 +780,19 @@ function jjreader_aggregator() {
 		elseif ($feedtype == "h-feed"){
 			$feed = jjreader_fetch_hfeed($feedurl,$feedtype);
 			foreach ($feed as $item){
-				$log_entry = "<ol><li>feedid = ". $feedid ."</li>";
-				$log_entry .= "<li>title = ". $title ."</li>";
-				$log_entry .= "<li>content = ". $content ."</li>";
-				$log_entry .= "<li>published = ". $published ."</li>";
-				$log_entry .= "<li>updated = ". $updated ."</li>";
-				$log_entry .= "<li>authorname = ". $authorname ."</li>";
-				$log_entry .= "<li>authorurl = ". $authorurl ."</li>";
-				$log_entry .= "<li>avurl = ". $avurl ."</li>";
-				$log_entry .= "<li>permalink = ". $permalink ."</li>";
-				$log_entry .= "<li>location = ". $location ."</li>";
-				$log_entry .= "<li>photo = ". $photo ."</li>";
-				$log_entry .= "<li>type = ". $type ."</li>";
-				$log_entry .= "<li>siteurl = ". $siteurl ."</li></ol>";
-				jjreader_log($log_entry);
-
+				
 				$permalink = $item['url'];
 				$title = $item['name'];
 				$content=$item['content'];
 				$authorname = $item['author'];
 				$authorurl = ""; // none for now — TO DO: Fetch avatar from h-card if possible, or just use siteurl
-				$time = $item['published'];
+				$published = $item['published'];
 				$avurl = ""; // none for now — TO DO: Fetch avatar from h-card if possible
 				$siteurl=$item['siteurl'];
 				$feedurl = $url;
 				$type = $item['type'];
+				
+
 				try{
 					add_reader_post($feedid,$title,$summary,$content,$published,$updated,$authorname,$authorurl,$avurl,$permalink,$location,$photo,$type,$siteurl,$sitetitle);
 					//add_reader_post($permalink, $title, $content, $authorname, $authorurl, $time, $avurl, $siteurl, $feedurl, $type);
@@ -894,7 +924,6 @@ function jjreader_fetch_hfeed($url,$feedtype) {
 				$log_entry .= "<li>item_syndication = ". $item_syndication ."</li>";
 				$log_entry .= "<li>item_inreplyto = ". $item_inreplyto ."</li>";
 				$log_entry .= "<li>item_author = ". $item_author ."</li>";
-				jjreader_log($log_entry);
 
 
 			//handle h-entry
@@ -902,6 +931,10 @@ function jjreader_fetch_hfeed($url,$feedtype) {
 				jjreader_log ("found h-entry");
 				jjreader_log("{$item['properties']['url'][0]}");
 				$item_content = "{$item['properties']['content'][0]['html']}";
+				$item_content_plain = "{$item['properties']['content'][0]['value']}";
+				$log_entry .= "<li>item_content = ". $item_content ."</li>";
+				$log_entry .= "<li>item_content_plain = ". $item_content_plain ."</li>";
+
 			}
 
 			//handle h-event
@@ -917,6 +950,13 @@ function jjreader_fetch_hfeed($url,$feedtype) {
 				//Summary
 				//Image
 			}
+
+			// Log the parsed h-feed  for debugging
+			jjreader_log($log_entry);
+
+
+			//Remove the title if it is equal to the post content (e.g. asides, notes, microblogs)
+				$item_name = clean_the_title($item_name,$item_content,$item_content_plain);
 
 			$hfeed_items [] = array (
 				"name"=>$item_name,
