@@ -923,7 +923,7 @@ function jjreader_fetch_hfeed($url,$feedtype) {
 			jjreader_log("published date = " .$item_published);
 			//gmdate('d.m.Y H:i:s',strtotime($datetime)));
 			//$item_published = UTC_datetime($item_published);
-			$item_updated = "{$item['properties']['updated'][0]}";
+			$item_updated = strtotime("{$item['properties']['updated'][0]}");
 			//$item_updated = UTC_datetime($item_updated);
 			$item_location = json_encode("{$item['properties']['location'][0]}");
 				//Note that location can be an h-card
@@ -1017,15 +1017,6 @@ function isRSS($feedtype){
     }
 }
 
-/* 
-** Returns a datetime in UTC
-*/
-
-function UTC_datetime($datetime){
-	//return (gmdate('d.m.Y H:i',strtotime($datetime)));
-	//return (strtotime($datetime));
-
-}
 
 /* 
 ** Returns a datetime formatted with user's preferences (for timezone, date format, & time format)
