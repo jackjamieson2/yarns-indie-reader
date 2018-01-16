@@ -261,7 +261,7 @@ function jjreader_subscription_viewer(){
 	global $wpdb;
 	// Start at post 0, show 15 posts per page
 	$fpage=0;
-	$length = 15;
+	$length = 50;
 	//$table_following = $wpdb->prefix . "jjreader_posts";
 	$items = $wpdb->get_results(
 		'SELECT * 
@@ -286,7 +286,7 @@ function jjreader_subscription_viewer(){
 				<div class="jjreader-item-meta">		
 					<?php
 					echo '<a class="jjreader-item-authorname" href="'.$item->siteurl.'">'.$item->sitetitle.'</a> ';
-					echo '<a class="jjreader-item-date" href="'.$item->permalink.'">at '.$item->published.'</a>';
+					echo '<a class="jjreader-item-date" href="'.$item->permalink.'">at '.user_datetime($item->published).'</a>';
 					echo '<span class="jjreader-item-type">'.$display_type.'</span>';
 					?>
 				</div>
@@ -394,9 +394,9 @@ function jjreader_log($message){
 ****
 */
 function clean_the_title($title,$content,$content_plain=''){
-	jjreader_log("content vs title");
-	jjreader_log("content = ".$content);
-	jjreader_log("title = ".$title);
+	//jjreader_log("content vs title");
+	//jjreader_log("content = ".$content);
+	//jjreader_log("title = ".$title);
 
 	$clean_title = html_entity_decode($title); // First convert html entities to text (to ensure consistent comparision)
 	$clean_title = strip_tags(rtrim($clean_title,".")); // remove trailing "..."
@@ -412,9 +412,9 @@ function clean_the_title($title,$content,$content_plain=''){
 	$clean_content = htmlentities($clean_content, ENT_QUOTES); // Convert quotation marks to HTML entities
 	$clean_content = str_replace("&nbsp;", "", $clean_content); // replace $nbsp; with a space character
 	$clean_content = str_replace(array("\r", "\n"), '', $clean_content); // remove line breaks from CONTENT
-	jjreader_log("clean_content vs clean_title");
-	jjreader_log("clean_content = " .$clean_content);
-	jjreader_log("clearn_title = " . $clean_title);
+	//jjreader_log("clean_content vs clean_title");
+	//jjreader_log("clean_content = " .$clean_content);
+	//jjreader_log("clearn_title = " . $clean_title);
 	if (strpos($clean_content,$clean_title)===0 ){
 		$title="";
 	} 
@@ -427,7 +427,7 @@ function clean_the_title($title,$content,$content_plain=''){
 		$clean_content = htmlentities($clean_content, ENT_QUOTES); // Convert quotation marks to HTML entities
 		$clean_content = str_replace("&nbsp;", "", $clean_content); // replace $nbsp; with a space character
 		$clean_content = str_replace(array("\r", "\n"), '', $clean_content); // remove line breaks from CONTENT
-		jjreader_log("COMPARISON #2: plain content: [". $clean_content . "] and title: [".$clean_title."]");
+		//jjreader_log("COMPARISON #2: plain content: [". $clean_content . "] and title: [".$clean_title."]");
 		if (strpos($clean_content,$clean_title)===0 ){
 			$title="";
 		} 
@@ -442,11 +442,17 @@ function add_reader_post($feedid,$title,$summary,$content,$published=0,$updated=
 
 	jjreader_log("adding post: ".$permalink.": ".$title);
 	global $wpdb;
-	jjreader_log("published = " . $published);
+	//jjreader_log("published = " . $published);
 	if($published < 1){
 		$published = time();
 	}
-	jjreader_log("published (checkpoint 2) = " . $published);
+	//jjreader_log("published2 = " . $published);
+	$published = date('Y-m-d H:i:s',$published);
+	//jjreader_log("published3 = " . $published);
+	$updated = date('Y-m-d H:i:s',$updated);
+
+
+	
 	//If the author url is not known, then just use the site url
 	if (empty($authorurl)){$authorurl = $siteurl;}
 	// If the content begins with the title, then the post is probably an aside, so 
@@ -465,8 +471,10 @@ function add_reader_post($feedid,$title,$summary,$content,$published=0,$updated=
 				'title' => $title,
 				'summary'=> $summary,
 				'content' => $content,
-				'published'=> date( 'Y-m-d H:i:s', $published),
-				'updated'=> date( 'Y-m-d H:i:s', $updated),
+				'published'=> $published,
+				'updated'=> $updated,
+				//'published'=> UTC_datetime($published),
+				//'updated'=> UTC_datetime($updated),
 				'authorname' => $authorname,
 				'authorurl' => $authorurl,
 				'authoravurl' => $avurl,
@@ -758,7 +766,9 @@ function jjreader_aggregator() {
 
 				$summary = html_entity_decode ($item->get_description());
 				$content = html_entity_decode ($item->get_content());
-				$published=$item->get_date("U");
+				//ORIGINAL $published=$item->get_date("U");
+				$published=$item->get_date('U');
+
 				$updated=0;
 				//Remove the title if it is equal to the post content (e.g. asides, notes, microblogs)
 				$title = clean_the_title($title,$content);
@@ -781,13 +791,19 @@ function jjreader_aggregator() {
 			$feed = jjreader_fetch_hfeed($feedurl,$feedtype);
 			foreach ($feed as $item){
 				
-				$permalink = $item['url'];
 				$title = $item['name'];
+				$summary=$item['summary'];
 				$content=$item['content'];
+				$published = $item['published'];
+				$updated = $item['updated'];
 				$authorname = $item['author'];
 				$authorurl = ""; // none for now — TO DO: Fetch avatar from h-card if possible, or just use siteurl
-				$published = $item['published'];
 				$avurl = ""; // none for now — TO DO: Fetch avatar from h-card if possible
+				$permalink = $item['url'];
+				$location='';
+				$photo='';
+				//$location = $item['location'];
+				//$photo = $item['photo'];
 				$siteurl=$item['siteurl'];
 				$feedurl = $url;
 				$type = $item['type'];
@@ -903,8 +919,12 @@ function jjreader_fetch_hfeed($url,$feedtype) {
 			$item_name = "{$item['properties']['name'][0]}";
 			$item_type = "{$item['type'][0]}";
 			$item_summary = "{$item['properties']['summary'][0]}";
-			$item_published = "{$item['properties']['published'][0]}";
+			$item_published = strtotime("{$item['properties']['published'][0]}");
+			jjreader_log("published date = " .$item_published);
+			//gmdate('d.m.Y H:i:s',strtotime($datetime)));
+			//$item_published = UTC_datetime($item_published);
 			$item_updated = "{$item['properties']['updated'][0]}";
+			//$item_updated = UTC_datetime($item_updated);
 			$item_location = json_encode("{$item['properties']['location'][0]}");
 				//Note that location can be an h-card
 			$item_url = "{$item['properties']['url'][0]}";
@@ -928,8 +948,8 @@ function jjreader_fetch_hfeed($url,$feedtype) {
 
 			//handle h-entry
 			if ("{$item['type'][0]}" == "h-entry"){
-				jjreader_log ("found h-entry");
-				jjreader_log("{$item['properties']['url'][0]}");
+				//jjreader_log ("found h-entry");
+				//jjreader_log("{$item['properties']['url'][0]}");
 				$item_content = "{$item['properties']['content'][0]['html']}";
 				$item_content_plain = "{$item['properties']['content'][0]['value']}";
 				$log_entry .= "<li>item_content = ". $item_content ."</li>";
@@ -939,8 +959,8 @@ function jjreader_fetch_hfeed($url,$feedtype) {
 
 			//handle h-event
 			if ("{$item['type'][0]}" == "h-event"){
-				jjreader_log ("found h-event");
-				jjreader_log("{$item['properties']['url'][0]}");
+				//jjreader_log ("found h-event");
+				//jjreader_log("{$item['properties']['url'][0]}");
 
 				$item_featured = "{$item['properties']['featured'][0]}";
 				$item_content = "";
@@ -986,16 +1006,38 @@ function jjreader_fetch_hfeed($url,$feedtype) {
 
 
 
-/* Returns true is the feed is of type rss */
+/* 
+** Returns true is the feed is of type rss 
+*/
 
 function isRSS($feedtype){
-	jjreader_log("checking if ". $feedtype . " is an RSS feed.");
 	$rssTypes = array ('application/rss+xml','application/atom+xml','application/rdf+xml','application/xml','text/xml','text/xml','text/rss+xml','text/atom+xml');
     if (in_array($feedtype,$rssTypes)){
-    	jjreader_log("Success!");
     	return True;
     }
 }
+
+/* 
+** Returns a datetime in UTC
+*/
+
+function UTC_datetime($datetime){
+	//return (gmdate('d.m.Y H:i',strtotime($datetime)));
+	//return (strtotime($datetime));
+
+}
+
+/* 
+** Returns a datetime formatted with user's preferences (for timezone, date format, & time format)
+*/
+
+function User_datetime($datetime){
+	$output_log = "Converting datetime... \n";
+	$user_datetime_format = get_option('date_format') . " " . get_option('time_format');
+	$user_datetime = get_date_from_gmt($datetime, $user_datetime_format);
+	return $user_datetime ;
+}
+
 
 
 /*
