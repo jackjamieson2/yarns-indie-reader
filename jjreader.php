@@ -234,7 +234,7 @@ add_shortcode('jjreader_page', 'jjreader_page_shortcode');
 // The Following page, visible on the front end
 function jjreader_page(){
 	?> 
-	<div class="reader-settings">
+	<div class="jjreader-controls">
 	<?php
 	
 	//Check if the user is logged in with sufficient privileges to EDIT the page
@@ -246,17 +246,90 @@ function jjreader_page(){
 		jjreader_subscription_editor();
 	}
 	?>
-	</div><!--.reader-settings-->
+	</div><!--.jjreader-controls-->
+
 	<?php
 	//Check if the user is logged in with sufficient privileges to VIEW the page
 	/* Any logged in user can view the following page */
-	jjreader_subscription_viewer();
-		
+	//jjreader_subscription_viewer();
+	if (current_user_can('read')){
+		?><div id = "jjreader-feed-container"></div><!--#jjreader-feed-container-->
+		<button class = "ui-button" id="jjreader-load-more">Load more...</button>
+		<?php
+		//jjreader_display_page(1); 	
+	} 	else {
+		?><div id = "jjreader-feed-error">Sorry, you must be logged in to view this page.</div><!--#jjreader-feed-container--><?php
+	}
 }
+add_action( 'wp_ajax_jjreader_display_page', 'jjreader_display_page' );
+//add_action( 'wp_ajax_read_me_later', array( $this, 'jjreader_new_subscription' ) );
+function jjreader_display_page($pagenum){
+	// load a page into variable $the_page then echo it
+	$pagenum = $_POST['pagenum'];
+
+	// Access databsae
+	global $wpdb;
+	// Start at post 0, show 15 posts per page
+	$length = 15;
+	//$table_following = $wpdb->prefix . "jjreader_posts";
+	$items = $wpdb->get_results(
+		'SELECT * 
+		FROM  `'.$wpdb->prefix . 'jjreader_posts` 
+		ORDER BY  `published` DESC 
+		LIMIT '.($pagenum*$length).' , '.$length.';'
+	);
+
+	//Iterate through all the posts in the database. Display the first 15 
+	if ( !empty( $items ) ) { 
+		//$the_page = '<div class="jjreader-page-'.$pagenum.'">';
+		$the_page = '<div class="jjreader-test">';
+		$the_page = "Page ". $pagenum ;
+		foreach ( $items as $item ) {
+			if ($item->posttype=="h-event"){
+				$display_type = "Event";
+			} else {
+				$display_type = ""; // unless specified, do not display post type
+			}
+			
+			$the_page .= '<div class="jjreader-feed-item">'; // container for each feed item
+			
+			$the_page .= '<div class="jjreader-item-meta">'; // container for meta 
+			$the_page .= '<a class="jjreader-item-authorname" href="'.$item->siteurl.'">'.$item->sitetitle.'</a> '; // authorname
+			$the_page .= '<a class="jjreader-item-date" href="'.$item->permalink.'">at '.user_datetime($item->published).'</a>'; // date/permalink
+			$the_page .= '<span class="jjreader-item-type">'.$display_type.'</span>'; // display type
+			$the_page .= '</div><!--.jjreader-item-meta-->';
+			
+			$the_page .='<div class="jjreader-item-summary">'. $item->summary.'</div><!--.jjreader-item-summary-->'; 
+			$the_page .='<button class="jjreader-item-more ui-button">Read more...</button><!--.jjreader-item-more-->'; 
+
+			$the_page .='<div class="jjreader-item-content jjreader-hidden">';
+			if ($item->title !=""){
+				$the_page .= '<a class="jjreader-item-title" href="'.$item->permalink.'">'.$item->title.'</a>';
+			}				
+			$the_page .= $item->content;
+			$the_page .= '</div><!--.jjreader-item-content-->';
+				
+			$the_page .= '<div class="jjreader-item-reponse">'.jjreader_reply_actions($item->posttype).'</div><!--.jjreader-item-reponse-->';
+
+
+			$the_page .= '</div><!--.jjreader-feed-item-->';
+			
+		
+		}
+		$the_page .= '</div><!--jjreader-page-'.$pagenum.'-->';
+		echo $the_page;
+
+	} else {
+		// There are no more items!
+		echo "finished";
+	}
+
+	wp_die(); // this is required to terminate immediately and return a proper response
+
+}
+
 // Fetch and display posts from subscribed sites
 function jjreader_subscription_viewer(){
-
-
 	// Access databsae
 	global $wpdb;
 	// Start at post 0, show 15 posts per page
@@ -320,9 +393,9 @@ function jjreader_subscription_viewer(){
 // Show interface for adding/removing/editing subscriptions
 function jjreader_subscription_editor(){
 	?>
-	<button id="jjreader-button-refresh" class="ui-state-default ui-corner-all" title=".ui-icon-arrowrefresh-1-e">Refresh feed<span class="ui-icon ui-icon-arrowrefresh-1-e"></span></button>
+	<button id="jjreader-button-refresh" class="ui-button ui-corner-all" title=".ui-icon-arrowrefresh-1-e">Refresh feed<span class="ui-icon ui-icon-arrowrefresh-1-e"></span></button>
 	<button id="jjreader-button-addSite" class="ui-button ui-corner-all ui-widget">Add Subscription</button>
-	<div id="jjreader-addSite-form" method="post" action="<?php echo str_replace( '%7E', '~', $_SERVER['REQUEST_URI']); ?>">
+	<div id="jjreader-addSite-form" class = "jjreader-hidden" method="post" action="<?php echo str_replace( '%7E', '~', $_SERVER['REQUEST_URI']); ?>">
 		<strong>Add a subscription</strong><br>
         <label for="jjreader-siteurl">Site URL </label><input type="text" name="jjreader-siteurl" value="" size="30"><br>
         <button id="jjreader-addSite-findFeeds" class="ui-button ui-corner-all ui-widget">Find feeds & title</button>
@@ -336,8 +409,9 @@ function jjreader_subscription_editor(){
 	<?php
 }
 
-// Show reply actions if the user has permission to create posts
+// Return html for reply actions if the user has permission to create posts
 function jjreader_reply_actions($post_type){
+	$the_reply_actions = "";
 
 	// Check if post_kinds plugin is installed (https://wordpress.org/plugins/indieweb-post-kinds/)
 	// If so, set post_kinds to true, if not, set to false
@@ -348,28 +422,25 @@ function jjreader_reply_actions($post_type){
 	} 
 	
 	if(current_user_can( 'publish_posts')){
-		?>
-		<button class="jjreader-like ui-button ui-corner-all ui-widget"><span class="ui-icon ui-icon-heart"></span>Like</button>
 
-		<button class="jjreader-reply ui-button ui-corner-all ui-widget"><span class="ui-icon ui-icon-arrowreturnthick-1-w"></span>Reply</button>
-		<?php 
+		$the_reply_actions .= '<button class="jjreader-like ui-button ui-corner-all ui-widget"><span class="ui-icon ui-icon-heart"></span>Like</button>';
+		$the_reply_actions .= '<button class="jjreader-reply ui-button ui-corner-all ui-widget"><span class="ui-icon ui-icon-arrowreturnthick-1-w"></span>Reply</button>';
 		if ($post_type=="h-event"){
-			?>
-		<span class ="jjreader-rsvp-buttons">RSVP: 
-			<button class="jjreader-rsvp-yes ui-button ui-corner-all ui-widget">Yes</button>
-			<button class="jjreader-rsvp-no ui-button ui-corner-all ui-widget">No</button>
-			<button class="jjreader-rsvp-interested ui-button ui-corner-all ui-widget">Interested</button>
-			<button class="jjreader-rsvp-yes ui-button ui-corner-all ui-widget">Maybe</button>
-		</span>
-		<?php } ?>
-		<div class="jjreader-reply-input jjreader-hidden">
-			<input class ="jjreader-reply-title" placeholder = "Enter a reply title (if desired)"></input>
-			<textarea class ="jjreader-reply-text" placeholder="Enter your reply here" ></textarea>
-			<button class="jjreader-reply-submit ui-button ui-corner-all ui-widget"><span class="ui-icon"></span>Submit</button>
-		</div>
-
-		<?php
+		
+			$the_reply_actions .= '<span class ="jjreader-rsvp-buttons">RSVP:';
+			$the_reply_actions .= '<button class="jjreader-rsvp-yes ui-button ui-corner-all ui-widget">Yes</button>';
+			$the_reply_actions .= '<button class="jjreader-rsvp-no ui-button ui-corner-all ui-widget">No</button>';
+			$the_reply_actions .= '<button class="jjreader-rsvp-interested ui-button ui-corner-all ui-widget">Interested</button>';
+			$the_reply_actions .= '<button class="jjreader-rsvp-yes ui-button ui-corner-all ui-widget">Maybe</button>';
+			$the_reply_actions .= '</span>';
+		}
+		$the_reply_actions .= '<div class="jjreader-reply-input jjreader-hidden">';
+			$the_reply_actions .= '<input class ="jjreader-reply-title" placeholder = "Enter a reply title (if desired)"></input>';
+			$the_reply_actions .= '<textarea class ="jjreader-reply-text" placeholder="Enter your reply here" ></textarea>';
+			$the_reply_actions .= '<button class="jjreader-reply-submit ui-button ui-corner-all ui-widget"><span class="ui-icon"></span>Submit</button>';
+		$the_reply_actions .= '</div>';
 	}
+	return $the_reply_actions;
 }
 
 //Log changes to the database (adding sites, fetching posts, etc.)

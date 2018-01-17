@@ -1,6 +1,14 @@
 /* CSS for jjreader
 */
 
+.jjreader-loading {
+	background: url(../images/Wedges.svg) no-repeat top left; 
+	background-size: 100% auto;
+	height: 1.5rem;
+	width: 1.5rem;
+	display:inline-block;
+
+}
 #jjreader-addSite-form label {
 	min-width: 10%;
 }
@@ -50,3 +58,9 @@
 }
 
 #jjreader-feed-container .jjreader-item-content {}
+
+
+button .jjreader-no-more {
+	/* The load more button when there are no posts left */
+	
+}

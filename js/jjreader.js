@@ -12,10 +12,17 @@
     //Show the 'add site' button if javascript is enable
     $('#jjreader-button-addSite').show();
 
+    var pagenum =1; // Start at page 1
+    //Load page 1 upon initial load
+    jjreader_showpage(pagenum);
 
 	 // The refresh button
     $("#jjreader-button-refresh").on("click", function() {
         console.log('Clicked refresh button');
+        //Set button to 
+ 		$('#jjreader-feed-container').html("Checking for new posts...");
+ 		jjreader_show_loading($('#jjreader-feed-container'));
+
         $.ajax({
 				url : jjreader_ajax.ajax_url,
 				type : 'post',
@@ -23,12 +30,79 @@
 					action : 'jjreader_aggregator',
 				},
 				success : function( response ) {
+					pagenum =1;
+					jjreader_showpage();
 					// TO DO: refresh the feed display once posts have been fetched
 					console.log("finished refreshing posts");
 				}
 			});
     });
     
+    
+
+    /* 
+    ** Display a page from the feed database
+    */
+    function jjreader_showpage() {
+		
+	    // If #jjreader-feed-container exists, it means the user has permission to view the reader (i.e. is logged in).
+	    // So, check if it exists and if so, load the first page of items from the reader 
+	    
+	    if ($('#jjreader-feed-container').length>0) {
+	    	console.log ("user is logged in"); 
+	    	 $.ajax({
+				url : jjreader_ajax.ajax_url,
+				type : 'post',
+				data : {
+					action : 'jjreader_display_page',
+					pagenum: pagenum,
+
+				},
+				success : function( response ) {
+					// TO DO: refresh the feed display once posts have been fetched
+					if (response == 'finished'){
+						//There are no more posts!
+						$('#jjreader-load-more').html("There are no more posts :(");
+					} else if (pagenum ==1){
+						$('#jjreader-feed-container').html(response);
+						$('#jjreader-load-more').html("Load more...");
+						$('#jjreader-load-more').prop("disabled", false); // re-enable the button
+					} else if (pagenum > 1){
+						$('#jjreader-feed-container').append(response);
+						$('#jjreader-load-more').html("Load more...");
+						$('#jjreader-load-more').prop("disabled", false); // re-enable the button
+
+					} 
+					console.log("finished showing page " + pagenum);
+					console.log(response);
+					pagenum+=1;
+
+				}
+			});
+	    	
+	    } else {
+	    	console.log ("user is not logged in"); 
+	    }
+    }
+
+ 	/* 
+ 	* The 'load more' button 
+ 	*/
+ 	$("#jjreader-load-more").on("click", function() {
+ 		$(this).prop("disabled",true);
+ 		$(this).html("Loading...");
+ 		jjreader_show_loading($(this));
+ 		jjreader_showpage(pagenum);
+ 	});
+
+ 	/* 
+ 	* Show loading animation at the specified element
+ 	*/
+ 	function jjreader_show_loading(target) {
+ 		target.append('<div class="jjreader-loading"></div>');
+ 	}
+
+
     /*
     * Reply buttons
     */
@@ -259,7 +333,7 @@
     	var error_id = "error-" + error_num;
     	error_content = '<div id="' + error_id + '" class="ui-state-error ui-corner-all" style="padding: 0 .7em;">';
     	error_content += '<p><span class="ui-icon ui-icon-alert" style="float: left; margin-right: .3em;"></span>';
-		error_content += message
+		error_content += message;
     	error_content += '</div>';
     	
         error_location.after(error_content);
@@ -278,7 +352,7 @@
     	var msg_id = "msg-" + msg_num;
     	msg_content = '<div id="' + msg_id + '" class="ui-state-highlight ui-corner-all" style="padding: 0 .7em;">';
     	msg_content += '<p><span class="ui-icon ui-icon-alert" style="float: left; margin-right: .3em;"></span>';
-		msg_content += message
+		msg_content += message;
     	msg_content += '</div>';
     	
         msg_location.after(msg_content);
