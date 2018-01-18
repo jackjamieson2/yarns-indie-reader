@@ -14,6 +14,7 @@
 
     var pagenum =0; // Start at page 1
     //Load page 1 upon initial load
+    jjreader_show_loading($('#jjreader-feed-container'));
     jjreader_showpage(pagenum);
 
 	 // The refresh button
@@ -21,6 +22,7 @@
         console.log('Clicked refresh button');
         //Set button to 
  		$('#jjreader-feed-container').html("Checking for new posts...");
+ 		disable_button($(this));
  		jjreader_show_loading($('#jjreader-feed-container'));
 
         $.ajax({
@@ -32,6 +34,7 @@
 				success : function( response ) {
 					pagenum =0;
 					jjreader_showpage();
+					enable_button($("#jjreader-button-refresh"));
 					// TO DO: refresh the feed display once posts have been fetched
 					console.log("finished refreshing posts");
 				}
@@ -63,18 +66,19 @@
 					if (response == 'finished'){
 						//There are no more posts!
 						$('#jjreader-load-more').html("There are no more posts :(");
+						disable_button($('#jjreader-load-more')); // disable the button (only necesary if there are no posts in the database at all)
 					} else if (pagenum ==0){
 						$('#jjreader-feed-container').html(response);
 						$('#jjreader-load-more').html("Load more...");
-						$('#jjreader-load-more').prop("disabled", false); // re-enable the button
+						enable_button($('#jjreader-load-more')); // re-enable the button
 					} else if (pagenum > 0){
 						$('#jjreader-feed-container').append(response);
 						$('#jjreader-load-more').html("Load more...");
-						$('#jjreader-load-more').prop("disabled", false); // re-enable the button
+						enable_button($('#jjreader-load-more'));// re-enable the button
 
 					} 
 					console.log("finished showing page " + pagenum);
-					console.log(response);
+					//console.log(response);
 					pagenum+=1;
 
 				}
@@ -89,18 +93,24 @@
  	* The 'load more' button 
  	*/
  	$("#jjreader-load-more").on("click", function() {
- 		$(this).prop("disabled",true);
+ 		disable_button($(this));
  		$(this).html("Loading...");
  		jjreader_show_loading($(this));
  		jjreader_showpage(pagenum);
  	});
 
+
  	/* 
- 	* Show loading animation at the specified element
+ 	* Read more button
  	*/
- 	function jjreader_show_loading(target) {
- 		target.append('<div class="jjreader-loading"></div>');
- 	}
+ 
+    $( "body" ).on( "click", ".jjreader-item-more", function() {
+    	$(this).hide();
+    	$(this).parent($('.jjreader-feed-item')).find($('.jjreader-item-summary')).hide();
+    	$(this).parent($('.jjreader-feed-item')).find($('.jjreader-item-content')).show();
+
+
+	});
 
 
     /*
@@ -108,13 +118,17 @@
     */
     
     // First, show the reply text when user clicks 'reply'
-    $(".jjreader-reply").on("click", function() {
+    $( "body" ).on( "click", ".jjreader-reply", function() {
+
+    //$(".jjreader-reply").on("click", function() {
+    	console.log('Clicked reply button');
 
     	$(this).parents('.jjreader-feed-item').find('.jjreader-reply-input').show();
-    });
+    }); 
     
     // Second, create reply post when user clicks 'Submit'
-      $(".jjreader-reply-submit").on("click", function() {
+    $( "body" ).on( "click", ".jjreader-reply-submit", function() {
+    //$(".jjreader-reply-submit").on("click", function() {
         console.log('Clicked submit button');
         reply_to = $(this).parents('.jjreader-feed-item').find('.jjreader-item-date').attr('href'); 
         reply_to_title = $(this).parents('.jjreader-feed-item').find('.jjreader-item-title').text();
@@ -122,44 +136,62 @@
         
         title = $(this).parents('.jjreader-feed-item').find('.jjreader-reply-title').val();
         content = $(this).parents('.jjreader-feed-item').find('.jjreader-reply-text').val();
+        feed_item_id = $(this).parents('.jjreader-feed-item').data('id');
+
 
         type= "reply";
         status = "draft";
-        jjreader_post(reply_to, reply_to_title, reply_to_content, type, status, title, content, function(response){
+        jjreader_post(reply_to, reply_to_title, reply_to_content, type, status, title, content,feed_item_id, function(response){
         	// This should return the post id as response
         });	
     });
     
     // Third, when user clicks 'Full editor', create a draft of the post, then open 
     // the full post editor in a new tab
-	 $(".jjreader-reply-fulleditor").on("click", function() {
+	$( "body" ).on( "click", ".jjreader-reply-fulleditor", function() {
+	//$(".jjreader-reply-fulleditor").on("click", function() {
            /* This should display the full editor (in a new tab?)
     */
 
-    });    
+    });     
 
     /*
     * Like buttons
     */
-    $(".jjreader-like").on("click", function() {
+    $( "body" ).on( "click", ".jjreader-like", function() {
+    //$(".jjreader-like").on("click", function() {
         console.log('Clicked like button');
-        reply_to = $(this).parents('.jjreader-feed-item').find('.jjreader-item-date').attr('href'); 
-        reply_to_title = $(this).parents('.jjreader-feed-item').find('.jjreader-item-title').text();
-        reply_to_content = $(this).parents('.jjreader-feed-item').find('.jjreader-item-content').html();
 
-        title = "";
-        content = "";
+        if ($(this).data('link')){
+        	// If a like already exists, open it in a new tab
+        	openInNewTab($(this).data('link'));
+        	console.log($(this).data('link'));
+        } else {
+	        // If this feed item has not been liked, add a like to the blog
+
+	        disable_button($(this));
+
+	        jjreader_show_loading($(this));
+
+	        reply_to = $(this).parents('.jjreader-feed-item').find('.jjreader-item-date').attr('href'); 
+	        reply_to_title = $(this).parents('.jjreader-feed-item').find('.jjreader-item-title').text();
+	        reply_to_content = $(this).parents('.jjreader-feed-item').find('.jjreader-item-content').html();
+	        feed_item_id = $(this).parents('.jjreader-feed-item').data('id');
+	        this_response_button = $('*[data-id="'+feed_item_id+'"]').find($('.jjreader-like'))
+
+	        title = "";
+	        content = "";
+	        
+	        //Note: call jjreader_post with a callback to deal with the response
+	        // https://stackoverflow.com/questions/5797930/how-to-write-a-jquery-function-with-a-callback
+	        type = "like";
+	        status = "draft";
+	        
+	        jjreader_post(reply_to, reply_to_title, reply_to_content, type, status,title,content,this_response_button, function(response){
+	        
+	        });
         
-        //Note: call jjreader_post with a callback to deal with the response
-        // https://stackoverflow.com/questions/5797930/how-to-write-a-jquery-function-with-a-callback
-        type = "like";
-        status = "draft";
-        
-        jjreader_post(reply_to, reply_to_title, reply_to_content, type, status,title,content, function(response){
-        	// This should call jjreader_post and return the post id as 'response' 
-        
-        });
-        
+        }
        
     });
     
@@ -168,7 +200,7 @@
        and returns the post ID (if successful) or 0 (if unsuccessful)
        
        */
-	function jjreader_post(reply_to, reply_to_title, reply_to_content, type, status, title, content) {
+	function jjreader_post(reply_to, reply_to_title, reply_to_content, type, status, title, content,this_response_button) {
 		 $.ajax({
 				url : jjreader_ajax.ajax_url,
 				type : 'post',
@@ -180,18 +212,33 @@
 					in_reply_to_content: reply_to_content, 
 					reply_status : status,
 					title : title,
-					content: content
+					content: content,
+					feed_item_id: feed_item_id
 				},
 				success : function( response ) {
 					/* TO DO: Return the response 
 					return response; 
 					*/
+
 				
 					// TO DO: refresh the feed display once posts have been fetched
-					console.log("response = " . response);
+					console.log(response);
+					// Add links to the newly created response posts
+		    		enable_button(this_response_button);
+					this_response_button.html('');
+					this_response_button.addClass('jjreader-response-exists');
+					this_response_button.attr('data-link',response);
+/*
+					if (type == 'like'){
+						console.log ('like');
+						$('*[data-id="'+feed_item_id+'"]').find($('.jjreader-like')).prop("disabled",false);
+						$('*[data-id="'+feed_item_id+'"]').find($('.jjreader-like')).html('');
+						$('*[data-id="'+feed_item_id+'"]').find($('.jjreader-like')).addClass('jjreader-liked');
+						$('*[data-id="'+feed_item_id+'"]').find($('.jjreader-like')).attr('data-link',response);
+					}
+					*/
 				}
 			});
-		
 	}
 
     
@@ -201,7 +248,6 @@
         console.log('Clicked "Add Site" button');
         $('#jjreader-addSite-form').show();
         $(this).hide();
-
     });
     
     
@@ -219,7 +265,12 @@
         
 	// Find feeds based on site url 
     $("#jjreader-addSite-findFeeds").on("click", function() {
-     	// Clear any existing values for feed url and site title
+    	disable_button($(this));
+ 		$(this).html("Searching for feeds...");
+ 		var the_button = $(this);
+ 		jjreader_show_loading($(this));     	
+
+ 		// Clear any existing values for feed url and site title
      	$("input[name=jjreader-sitetitle]").val("");	
      	$("input[name=jjreader-feedurl]").val("");	
      	$('.jjreader-feedpicker').empty();
@@ -235,6 +286,10 @@
 					siteurl: new_siteURL,
 				},
 				success : function( response ) {
+					enable_button(the_button); // $(this) won't work here, so we use the_button, which was created above
+ 					the_button.html("Find feeds");
+ 					
+
 				 	console.log(response);
 				 	var json_response = JSON.parse(response);
 					console.log(json_response);
@@ -276,41 +331,46 @@
 
 	// CLICK: When the user clicks the submit button to add a subscription	
     $("#jjreader-addSite-submit").on("click", function() {
+    		disable_button($(this));
+	 		$(this).html("Adding feed...");
+	 		var the_button = $(this);
+	 		jjreader_show_loading($(this));     	
 
-        console.log('Clicked to submit a new subscription');
-		// Remove any existing errors
-		clearErrors();
+	        console.log('Clicked to submit a new subscription');
+			// Remove any existing errors
+			clearErrors();
 
-		var new_siteURL = $("input[name=jjreader-siteurl]").val();
-        var new_feedURL = $("input[name=jjreader-feedurl]").val();
-        var new_siteTitle = $("input[name=jjreader-sitetitle]").val();
-        var new_feedType = $(".jjreader-feed-type").text();
+			var new_siteURL = $("input[name=jjreader-siteurl]").val();
+	        var new_feedURL = $("input[name=jjreader-feedurl]").val();
+	        var new_siteTitle = $("input[name=jjreader-sitetitle]").val();
+	        var new_feedType = $(".jjreader-feed-type").text();
 
-        if (new_feedURL) {
-        	console.log("Adding feed " + new_feedURL);
-        	$.ajax({
-				url : jjreader_ajax.ajax_url,
-				type : 'post',
-				data : {
-					action : 'jjreader_new_subscription',
-					siteurl: new_siteURL,
-					feedurl: new_feedURL,
-					sitetitle: new_siteTitle,
-					feedtype: new_feedType,
-				},
-				success : function( response ) {
-					jjreader_msg(response, $("#jjreader-addSite-submit"));
-					console.log(response);
-				}
-			});
-           
-        } else {
-            jjreader_error("You must enter a Feed URL. "+ new_feedURL + " failed.", $(this));
-        }
+	        if (new_feedURL) {
+	        	console.log("Adding feed " + new_feedURL);
+	        	$.ajax({
+					url : jjreader_ajax.ajax_url,
+					type : 'post',
+					data : {
+						action : 'jjreader_new_subscription',
+						siteurl: new_siteURL,
+						feedurl: new_feedURL,
+						sitetitle: new_siteTitle,
+						feedtype: new_feedType,
+					},
+					success : function( response ) {
+						enable_button(the_button); // $(this) won't work here, so we use the_button, which was created above
+						
+	 					the_button.html("Submit");
 
-        //$('#jjreader_addSite_form').show();
-        //$(this).hide();
-
+						jjreader_msg(response, $("#jjreader-addSite-submit"));
+						console.log(response);
+					}
+				});
+	           
+	        } else {
+	            jjreader_error("You must enter a Feed URL. "+ new_feedURL + " failed.", $(this));
+	        }
+	    
     });
     
    
@@ -364,8 +424,31 @@
         // Disabled for now
         //$('html,body').animate({scrollTop: $("#" + msg_id ).offset().top - 100}); 
     }
+
+ 	/* 
+ 	* Show loading animation at the specified element
+ 	*/
+ 	function jjreader_show_loading(target) {
+ 		target.append('<div class="jjreader-loading"></div>');
+ 	}
+
+
+    // Open a link in a new tab
+    function openInNewTab(url) {
+    	window.open(url, '_blank');
+	}
     
+    //disable the target element and prevent pointer events
+    function disable_button(target) {
+    	target.prop("disabled",true);
+    	target.addClass("jjreader-disabled");
+    }
     
+    //enable the target elements and allow pointer events
+    function enable_button(target) {
+    	target.prop("disabled",false);
+    	target.removeClass("jjreader-disabled");
+    }
 
 	function addhttp(url) {
 		if (url) {

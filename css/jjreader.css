@@ -1,13 +1,23 @@
 /* CSS for jjreader
 */
 
+#jjreader-feed-container {
+	display:block;
+	position:relative;
+	overflow:hidden;
+
+}
+#jjreader-feed-container img, 
+#jjreader-feed-container video {
+	max-width:100%;
+}
+
 .jjreader-loading {
 	background: url(../images/Wedges.svg) no-repeat top left; 
 	background-size: 100% auto;
-	height: 1.5rem;
-	width: 1.5rem;
+	height: 1rem;
+	width: 1rem;
 	display:inline-block;
-
 }
 #jjreader-addSite-form label {
 	min-width: 10%;
@@ -16,6 +26,12 @@
 .jjreader-hidden {
 	display:none;
 }
+
+
+.jjreader-disabled {
+	pointer-events:none;
+}
+
 
 /*
 ** Posts displayed in the feed
@@ -58,6 +74,53 @@
 }
 
 #jjreader-feed-container .jjreader-item-content {}
+
+#jjreader-feed-container .jjreader-response-controls{
+	display:inline-block;
+	width:50%;
+}
+
+#jjreader-feed-container .jjreader-like::before {
+	content:"Like";
+}
+
+#jjreader-feed-container .jjreader-like.jjreader-response-exists::before {
+	content:"Liked";
+}
+
+#jjreader-feed-container .jjreader-reply::before {
+	content:"Reply";
+}
+
+#jjreader-feed-container .jjreader-reply.jjreader-response-exists::before {
+	content:"Replied";
+}
+
+#jjreader-feed-container .jjreader-replies:empty{
+	display:none;
+}
+#jjreader-feed-container .jjreader-replies::before {
+	content:"Your responses:";
+}
+
+
+#jjreader-feed-container .jjreader-replies {
+
+	display:inline-block;
+	width:50%;
+	font-size: small;
+	color: #888;
+	line-height: 1.1em;
+	text-align: right;
+}
+
+#jjreader-feed-container .jjreader-replies a {
+	display:inline-block;
+	padding:0.1em 0.2em;
+	margin: 0.2em 0 0 1em;
+	border: 1px solid #dbd4d4;;
+}
+
 
 
 button .jjreader-no-more {
