@@ -12,7 +12,7 @@
     //Show the 'add site' button if javascript is enable
     $('#jjreader-button-addSite').show();
 
-    var pagenum =1; // Start at page 1
+    var pagenum =0; // Start at page 1
     //Load page 1 upon initial load
     jjreader_showpage(pagenum);
 
@@ -30,7 +30,7 @@
 					action : 'jjreader_aggregator',
 				},
 				success : function( response ) {
-					pagenum =1;
+					pagenum =0;
 					jjreader_showpage();
 					// TO DO: refresh the feed display once posts have been fetched
 					console.log("finished refreshing posts");
@@ -63,11 +63,11 @@
 					if (response == 'finished'){
 						//There are no more posts!
 						$('#jjreader-load-more').html("There are no more posts :(");
-					} else if (pagenum ==1){
+					} else if (pagenum ==0){
 						$('#jjreader-feed-container').html(response);
 						$('#jjreader-load-more').html("Load more...");
 						$('#jjreader-load-more').prop("disabled", false); // re-enable the button
-					} else if (pagenum > 1){
+					} else if (pagenum > 0){
 						$('#jjreader-feed-container').append(response);
 						$('#jjreader-load-more').html("Load more...");
 						$('#jjreader-load-more').prop("disabled", false); // re-enable the button
