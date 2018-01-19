@@ -67,7 +67,7 @@
 	color:#3f3f3f;
 }
 
-#jjreader-feed-container .jjreader-item-content .jjreader-item-title{
+#jjreader-feed-container .jjreader-item-title{
 	font-weight:bold;
 	color:#3f3f3f;
 	display:block;
@@ -122,8 +122,14 @@
 }
 
 
+/* 
+**  Messages and errors
+*/
 
-button .jjreader-no-more {
-	/* The load more button when there are no posts left */
-	
+.ui-state-error {
+	color:red;
+
+}
+.ui-state-highlight {
+	font-style:italic;
 }

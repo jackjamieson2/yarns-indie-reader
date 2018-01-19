@@ -24,33 +24,31 @@
 */
 
 /* 
-	Portions of code are modified from Ashton McAllan's WhisperFollow plugin. 
-	(http://acegiak.machinespirit.net/2012/01/25/whisperfollow/).
-*/ 
+ *	Portions of code are modified from Ashton McAllan's WhisperFollow plugin. 
+ *	(http://acegiak.machinespirit.net/2012/01/25/whisperfollow/).
+ */ 
 
 /*
- MF2 Parser by Barnaby Walters: https://github.com/indieweb/php-mf2
-*/
-
+ * MF2 Parser by Barnaby Walters: https://github.com/indieweb/php-mf2
+ */
 
 defined( 'ABSPATH' ) or die( 'No script kiddies please!' );
-
-/* NOTE: If post kinds is installed, requiring Mf2 causes an error because it is already 
-*  included. Therefore will need to add a check and only include if not already available
-* (can enqueue do this?)
-*/ 
  
 // Require the mf2 parser only if it has not already been added by another plugin
 if ( ! class_exists( 'Mf2\Parser' ) ) {
     require_once plugin_dir_path( __FILE__ ) .  'lib/Mf2/Parser.php'; // For parsing h-feed
 } 
+
 if ( ! class_exists( 'phpUri' ) ) {
 	require_once plugin_dir_path( __FILE__ ) .  'lib/phpuri.php'; // For converting relative URIs to absolute 
 }
 
 
 global $jjreader_db_version;
-$jjreader_db_version = "1.4"; // Updated database structure
+$jjreader_db_version = "1.5"; // Updated database structure
+	//version 1.5 - added tags to 'following' table 
+
+
 
 
 /* Enqueue scripts and styles for the reader page */ 
@@ -59,7 +57,6 @@ function jjreader_enqueue_scripts() {
 	wp_enqueue_script( 'jquery-ui', plugin_dir_url( __FILE__ ).'jqueryUI/jquery-ui.min.js', array('jquery'), null, true);
 	wp_enqueue_script( 'jjreader_js', plugin_dir_url( __FILE__ ).'js/jjreader.js', array('jquery'), null, true);
 
-	wp_enqueue_style( 'jquery-ui-style', plugin_dir_url( __FILE__ ).'jqueryUI/jquery-ui.min.css' );
 	wp_enqueue_style( 'jjreader-style', plugin_dir_url( __FILE__ ).'css/jjreader.css' );
 	//Add ajax support for the jjreader_js script
 	wp_localize_script( 'jjreader_js', 'jjreader_ajax', array(
@@ -90,6 +87,13 @@ function initial_setup_admin_notice() {
     <?php
 }
 	
+
+/*
+**
+**   Installation/Setup functions
+**
+*/
+
 function jjreader_install() {
 	// Activates the plugin and checks for compatible version of WordPress 
 	if ( version_compare( get_bloginfo( 'version' ), '2.9', '<' ) ) {
@@ -140,6 +144,7 @@ function jjreader_create_tables() {
 		feedurl text DEFAULT '' NOT NULL,
 		sitetitle text DEFAULT '' NOT NULL,
 		feedtype text DEFAULT '' NOT NULL,
+		tags text DEFAULT '',
 		PRIMARY KEY id (id)
 	);";
 
@@ -224,6 +229,30 @@ function create_following_page(){
 }
 
 
+
+
+/*
+** Defines the interval for the cron job (5 minutes) 
+*/
+function jjreader_cron_definer($schedules){
+	$schedules['fivemins'] = array(
+		'interval'=> 300,
+		'display'=>  __('Once Every 5 Minutes')
+	);
+
+	$schedules['twentymins'] = array(
+		'interval'=> 1200,
+		'display'=>  __('Once Every 5 Minutes')
+	);
+	return $schedules;
+}
+
+/*
+**
+**   Display feed reader page when [jjreader_page] shortcode is used
+**
+*/
+
 // Function to make the jjreader_page shortcode work
 function jjreader_page_shortcode() {
     jjreader_page();
@@ -233,33 +262,174 @@ add_shortcode('jjreader_page', 'jjreader_page_shortcode');
 
 // The Following page, visible on the front end
 function jjreader_page(){
-	?> 
-	<div class="jjreader-controls">
-	<?php
-	
-	//Check if the user is logged in with sufficient privileges to EDIT the page
-	/* Only editors or admins can edit the list of subscribed sites */ 
+	if (current_user_can('read')){  // Only logged in users can access this page
+		// Show controls for visitors with permission
+		if(current_user_can( 'edit_pages')){ // Only editors or admins can access the controls to manage subscriptions and refresh the feed
+			?>
+			<div class="jjreader-controls">
+				<button id="jjreader-button-refresh" >Update feed</button> 
+				<button id="jjreader-button-feed">View feed</button>
+				<button id="jjreader-button-subscriptions" >Manage subscriptions</button>
+			</div><!--.jjreader-controls-->
 
-	if(current_user_can( 'edit_pages')){
-	 	// Only allow editors or above to edit the subscriptions
-	 	// (Only editors or above can edit pages)
-		jjreader_subscription_editor();
-	}
-	?>
-	</div><!--.jjreader-controls-->
+			<?php jjreader_subscription_editor(); ?>
 
-	<?php
-	//Check if the user is logged in with sufficient privileges to VIEW the page
-	/* Any logged in user can view the following page */
-	//jjreader_subscription_viewer();
-	if (current_user_can('read')){
-		?><div id = "jjreader-feed-container"></div><!--#jjreader-feed-container-->
-		<button class = "ui-button" id="jjreader-load-more">Load more...</button>
+
+			<?php
+
+		}
+		
+		// SHow the feed for logged in visitors
+		?>
+		<div id = "jjreader-feed-container"></div><!--#jjreader-feed-container-->
+		<button  id="jjreader-load-more">Load more...</button>
 		<?php
-	} 	else {
-		?><div id = "jjreader-feed-error">Sorry, you must be logged in to view this page.</div><!--#jjreader-feed-container--><?php
+
+
+
+	} else {
+		// The visitor is not logged in
+		?>
+		<div id = "jjreader-feed-error">Sorry, you must be logged in to view this page.</div>
+		<?php
 	}
 }
+
+/* Show interface for adding/removing/editing subscriptions */
+function jjreader_subscription_editor(){
+	?>
+	<div id="jjreader-subscriptions" class="jjreader-hidden">
+	<div id="jjreader-addSite-form"  method="post" action="<?php echo str_replace( '%7E', '~', $_SERVER['REQUEST_URI']); ?>">
+		<h2>Add a subscription</h2><br>
+        <label for="jjreader-siteurl">Site URL </label><input type="text" name="jjreader-siteurl" value="" size="30"><br>
+        <button id="jjreader-addSite-findFeeds" >Find feeds</button>
+		<br><br>
+		<div id="jjreader-choose-feed" class="jjreader-hidden">
+		<form class="jjreader-feedpicker jjreader-hidden "></form>
+		<label for="jjreader-feedurl">Feed URL </label><input type="text" name="jjreader-feedurl" value="" size="30"><br>
+		<label for="jjreader-sitetitle">Site Title </label><input type="text" name="jjreader-sitetitle" value="" size="30"><br>
+		<div>Feed type:<span class="jjreader-feed-type"></span></div>
+		<button id="jjreader-addSite-submit" >Submit</button>
+		</div><!--#jjreader-choose-feed-->
+	</div>
+
+	<h2> Manage subscriptions </h2><br>
+	<div id="jjreader-subscription-list">
+	</div><!--#jjreader-subscription-list-->
+	
+	</div><!--#jjreader-subscriptions-->
+	<?php
+}
+
+// Displays a full list of the subscriptions 
+add_action( 'wp_ajax_jjreader_subscription_list', 'jjreader_subscription_list' );
+function jjreader_subscription_list(){
+	// Start with a blank page
+	$subscriptions_list = '';
+	global $wpdb;
+	$items = $wpdb->get_results(
+		'SELECT * 
+		FROM  `'.$wpdb->prefix . 'jjreader_following` 
+		ORDER BY  `sitetitle` COLLATE  ASC;' 
+	);
+	// Note: Currently this sorts the subscription list as case sensitive. It would be better to sort case insensitive. 
+
+
+
+	
+	// Generate HTML for each subscription item
+	if ( !empty( $items ) ) { 			
+		foreach ( $items as $item ) {
+			$subscriptions_list .= '<div class="jjreader-subscription-item" data-id="'.$item->id.'">';
+			$subscriptions_list .= '<span class="jjreader-subscription-title">'.$item->sitetitle.'</span>';
+			$subscriptions_list .= '<button class="jjreader-button-edit-subscription jjreader-hidden" >Edit</button>';
+			$subscriptions_list .= '<button class="jjreader-button-unsubscribe">Unsubscribe</button>';
+
+			$subscriptions_list .= '<div class="jjreader-subscription-options jjreader-hidden">';
+			$subscriptions_list .= '<h3>Edit this subscription</h3>';
+			$subscriptions_list .='<label for="jjreader-sitetitle">Site Title </label><input type="text" name="jjreader-sitetitle" value="'.$item->sitetitle.'" size="30"><br>';
+			$subscriptions_list .='<label for="jjreader-feedurl">Feed URL </label><input type="text" name="jjreader-feedurl" value="'.$item->feedurl.'" size="30"><br>';
+			$subscriptions_list .='<label for="jjreader-siteurl">Site URL </label><input type="text" name="jjreader-siteurl" value="'.$item->siteurl.'" size="30"><br>';
+			$subscriptions_list .='<label for="jjreader-siteurl">Site URL </label><input type="text" name="jjreader-feedtags" value="'.$item->tags.'" size="30"><br>';
+			$subscriptions_list .= '<button class="jjreader-subscription-save">Save changes</button>';
+			$subscriptions_list .= '</div><!--.jjreader-subscription-options-->';
+			$subscriptions_list .= '</div><!--.jjreader-subscription-item-->'; 
+		}
+	} else {
+		$subscriptions_list .= "You have not subscribed to any sites yet! Click 'Add Subscription' to do so.";
+	}
+	echo $subscriptions_list;
+	wp_die();
+}
+
+
+/* Return html for reply actions if the user has permission to create posts */
+function jjreader_reply_actions($post_type, $liked, $replied, $rsvped){
+	$the_reply_actions = '';
+	if(current_user_can( 'publish_posts')){ // Reply actions are only available to users who can publish posts
+		$the_reply_actions .= '<div class ="jjreader-response-controls"> ';
+		if ($liked){
+			//this post has been liked
+			$the_reply_actions .= '<button class="jjreader-like jjreader-response-exists " data-link="'.$liked.'"></button>';
+		} else {
+			// this post has not been liked
+			$the_reply_actions .= '<button class="jjreader-like " ></button>';
+		}
+
+		if ($replied){
+			//this post has been liked
+			$the_reply_actions .= '<button class="jjreader-reply jjreader-response-exists " data-link="'.$replied.'"></button>';
+		} else {
+			// this post has not been liked
+			$the_reply_actions .= '<button class="jjreader-reply " ></button>';
+		}
+
+		// Disabling RSVP replies for now — Will add again later.
+		/*
+		if ($post_type=="h-event"){
+		
+			$the_reply_actions .= '<span class ="jjreader-rsvp-buttons">RSVP:';
+			$the_reply_actions .= '<button class="jjreader-rsvp-yes ">Yes</button>';
+			$the_reply_actions .= '<button class="jjreader-rsvp-no ">No</button>';
+			$the_reply_actions .= '<button class="jjreader-rsvp-interested ">Interested</button>';
+			$the_reply_actions .= '<button class="jjreader-rsvp-yes ">Maybe</button>';
+			$the_reply_actions .= '</span>';
+		}
+		*/
+		$the_reply_actions .= '<div class="jjreader-reply-input jjreader-hidden">';
+			$the_reply_actions .= '<input class ="jjreader-reply-title" placeholder = "Enter a reply title (if desired)"></input>';
+			$the_reply_actions .= '<textarea class ="jjreader-reply-text" placeholder="Enter your reply here" ></textarea>';
+			$the_reply_actions .= '<button class="jjreader-reply-submit ">Submit</button>';
+		$the_reply_actions .= '</div>';
+
+		$the_reply_actions .= '</div><!--.jjreader-response-controls-->';
+	}
+	return $the_reply_actions;
+}
+
+
+
+
+
+
+
+/*
+**
+**   Major functions
+		- jjreader_display_page (ajax)
+		- jjreader_add_feeditem 
+		- jjreader_new_subscription (ajax)
+		- jjreader_response (ajax)
+		- jjreader_findFeeds (ajax)
+		- jjreader_aggregator 
+
+		jjreader_fetch_feed
+		jjreader_fetch_hfeed
+
+**	
+*/
+
+/* Returns a single page for display */ 
 add_action( 'wp_ajax_jjreader_display_page', 'jjreader_display_page' );
 function jjreader_display_page($pagenum){
 	// load a page into variable $the_page then echo it
@@ -288,45 +458,40 @@ function jjreader_display_page($pagenum){
 			} else {
 				$display_type = ""; // unless specified, do not display post type
 			}
+			/*
+			//// Deprecated for now since replies are displayed on the buttons themselves
 			//Generate html for responses (likes, replies) if they exist
 			$the_replies ='';
-			if ($item->liked){
-				$the_replies .= '<a href="'.get_permalink($item->liked).'">like</a>';	
-			}
-			if ($item->replied){
-				$the_replies .= '<a href="'.get_permalink($item->replied).'">reply</a>';	
-			}
-			if ($item->rsvped){
-				$the_replies .= '<a href="'.get_permalink($item->rsvped).'">rsvp</a>';	
-			}
-
+			if ($item->liked) { $the_replies .= '<a href="'.get_permalink($item->liked).'">like</a>'; }
+			if ($item->replied) { $the_replies .= '<a href="'.get_permalink($item->replied).'">reply</a>'; }
+			if ($item->rsvped){ $the_replies .= '<a href="'.get_permalink($item->rsvped).'">rsvp</a>'; }
+			*/
 
 			// Display an individual feed item
 			$the_page .= '<div class="jjreader-feed-item" data-id="'.$item->id.'">'; // container for each feed item
-			
+		
 			$the_page .= '<div class="jjreader-item-meta">'; // container for meta 
 			$the_page .= '<a class="jjreader-item-authorname" href="'.$item->siteurl.'">'.$item->sitetitle.'</a> '; // authorname
 			$the_page .= '<a class="jjreader-item-date" href="'.$item->permalink.'">at '.user_datetime($item->published).'</a>'; // date/permalink
 			$the_page .= '<span class="jjreader-item-type">'.$display_type.'</span>'; // display type
 			$the_page .= '</div><!--.jjreader-item-meta-->';
-			
-			$the_page .='<div class="jjreader-item-summary">'. $item->summary.'</div><!--.jjreader-item-summary-->'; 
-			$the_page .='<button class="jjreader-item-more ui-button">Read more...</button><!--.jjreader-item-more-->'; 
-
-			$the_page .='<div class="jjreader-item-content jjreader-hidden">';
 			if ($item->title !=""){
 				$the_page .= '<a class="jjreader-item-title" href="'.$item->permalink.'">'.$item->title.'</a>';
-			}				
-			$the_page .= $item->content;
-			$the_page .= '</div><!--.jjreader-item-content-->';
-				
+			}
+			$the_page .='<div class="jjreader-item-summary">'. $item->summary.'</div><!--.jjreader-item-summary-->'; 
+
+			// Display content if it exists (i.e. it is an expansion of the summary)
+			if ($content != ""){
+				$the_page .='<button class="jjreader-item-more">Read more...</button><!--.jjreader-item-more-->'; 
+				$the_page .='<div class="jjreader-item-content jjreader-hidden">';
+				$the_page .= $item->content;
+				$the_page .= '</div><!--.jjreader-item-content-->';
+			}
+
 			$the_page .= '<div class="jjreader-item-reponse">'.jjreader_reply_actions($item->posttype,$item->liked,$item->replied,$item->rsvped);
 			$the_page .= '<div class="jjreader-replies">'.$the_replies.'</div></div><!--.jjreader-item-reponse-->';
 
-
-			$the_page .= '</div><!--.jjreader-feed-item-->';
-			
-		
+			$the_page .= '</div><!--.jjreader-feed-item-->';	
 		}
 		$the_page .= '</div><!--jjreader-page-'.$pagenum.'-->';
 		echo $the_page;
@@ -335,158 +500,11 @@ function jjreader_display_page($pagenum){
 		// There are no more items!
 		echo "finished";
 	}
-
 	wp_die(); // this is required to terminate immediately and return a proper response
-
 }
 
-
-// Show interface for adding/removing/editing subscriptions
-function jjreader_subscription_editor(){
-	?>
-	<button id="jjreader-button-refresh" class="ui-button ui-corner-all" title=".ui-icon-arrowrefresh-1-e">Refresh feed<span class="ui-icon ui-icon-arrowrefresh-1-e"></span></button>
-	<button id="jjreader-button-addSite" class="ui-button ui-corner-all ui-widget">Add Subscription</button>
-	<div id="jjreader-addSite-form" class = "jjreader-hidden" method="post" action="<?php echo str_replace( '%7E', '~', $_SERVER['REQUEST_URI']); ?>">
-		<strong>Add a subscription</strong><br>
-        <label for="jjreader-siteurl">Site URL </label><input type="text" name="jjreader-siteurl" value="" size="30"><br>
-        <button id="jjreader-addSite-findFeeds" class="ui-button ui-corner-all ui-widget">Find feeds</button>
-		<br><br>
-		<form class="jjreader-feedpicker jjreader-hidden "></form
-		<label for="jjreader-feedurl">Feed URL </label><input type="text" name="jjreader-feedurl" value="" size="30"><br>
-		<label for="jjreader-sitetitle">Site Title </label><input type="text" name="jjreader-sitetitle" value="" size="30"><br>
-		<div>Feed type:<span class="jjreader-feed-type"></span></div>
-		<button id="jjreader-addSite-submit" class="ui-button ui-corner-all ui-widget">Submit</button>
-	</div>
-	<?php
-}
-
-// Return html for reply actions if the user has permission to create posts
-function jjreader_reply_actions($post_type, $liked, $replied, $rsvped){
-
-	
-	/*
-	if ($item->liked){
-				$the_replies .= '<a href="'.get_permalink($item->liked).'">like</a>';	
-			}
-			if ($item->replied){
-				$the_replies .= '<a href="'.get_permalink($item->replied).'">reply</a>';	
-			}
-			if ($item->rsvped){
-				$the_replies .= '<a href="'.get_permalink($item->rsvped).'">rsvp</a>';	
-			}
-			*/
-
-	
-	if(current_user_can( 'publish_posts')){
-
-		$the_reply_actions .= '<div class ="jjreader-response-controls"> ';
-		if ($liked){
-			//this post has been liked
-			$the_reply_actions .= '<button class="jjreader-like jjreader-response-exists ui-button ui-corner-all ui-widget" data-link="'.$liked.'"></button>';
-		} else {
-			// this post has not been liked
-			$the_reply_actions .= '<button class="jjreader-like ui-button ui-corner-all ui-widget" ></button>';
-		}
-
-		if ($replied){
-			//this post has been liked
-			$the_reply_actions .= '<button class="jjreader-reply jjreader-response-exists ui-button ui-corner-all ui-widget" data-link="'.$replied.'"></button>';
-		} else {
-			// this post has not been liked
-			$the_reply_actions .= '<button class="jjreader-reply ui-button ui-corner-all ui-widget" ></button>';
-		}
-
-		// Disabling RSVP replies for now — Will add again later.
-		/*
-		if ($post_type=="h-event"){
-		
-			$the_reply_actions .= '<span class ="jjreader-rsvp-buttons">RSVP:';
-			$the_reply_actions .= '<button class="jjreader-rsvp-yes ui-button ui-corner-all ui-widget">Yes</button>';
-			$the_reply_actions .= '<button class="jjreader-rsvp-no ui-button ui-corner-all ui-widget">No</button>';
-			$the_reply_actions .= '<button class="jjreader-rsvp-interested ui-button ui-corner-all ui-widget">Interested</button>';
-			$the_reply_actions .= '<button class="jjreader-rsvp-yes ui-button ui-corner-all ui-widget">Maybe</button>';
-			$the_reply_actions .= '</span>';
-		}
-		*/
-		$the_reply_actions .= '<div class="jjreader-reply-input jjreader-hidden">';
-			$the_reply_actions .= '<input class ="jjreader-reply-title" placeholder = "Enter a reply title (if desired)"></input>';
-			$the_reply_actions .= '<textarea class ="jjreader-reply-text" placeholder="Enter your reply here" ></textarea>';
-			$the_reply_actions .= '<button class="jjreader-reply-submit ui-button ui-corner-all ui-widget"><span class="ui-icon"></span>Submit</button>';
-		$the_reply_actions .= '</div>';
-
-		$the_reply_actions .= '</div><!--.jjreader-response-controls-->';
-	}
-	return $the_reply_actions;
-}
-
-//Log changes to the database (adding sites, fetching posts, etc.)
-function jjreader_log($message){
-	global $wpdb;
-	$table_name = $wpdb->prefix . 'jjreader_log';
-
-	$wpdb->insert( 
-		$table_name, 
-		array( 
-			'date' => current_time( 'mysql' ), 
-			'log' => $message, 
-		) 
-	);
-
-}
-
-/* 
-** Remove titles for posts where the title is equal to the content (e.g. notes, asides, microblogs)
-****
-**** In many rss feeds and h-feeds, the only indication of whether a title is redunant is that it duplicates 
-****
-*/
-function clean_the_title($title,$content,$content_plain=''){
-	//jjreader_log("content vs title");
-	//jjreader_log("content = ".$content);
-	//jjreader_log("title = ".$title);
-
-	$clean_title = html_entity_decode($title); // First convert html entities to text (to ensure consistent comparision)
-	$clean_title = strip_tags(rtrim($clean_title,".")); // remove trailing "..."
-	$clean_title = strip_tags(trim($clean_title)); // remove white space on either side
-	$clean_title = htmlentities($clean_title, ENT_QUOTES); // Convert quotation marks to HTML entities
-	$clean_title = str_replace(array("\r", "\n"), '', $clean_title); // remove line breaks from title
-	$clean_title = str_replace("&nbsp;", "", $clean_title); // replace $nbsp; with a space character
-	$clean_title = str_replace(array("\r", "\n"), '', $clean_title); // remove line breaks from title
-	
-	$clean_content = html_entity_decode($content); // First convert html entities to text (to ensure consistent comparision)
-	$clean_content = strip_tags(rtrim($clean_content,".")); // remove trailing "..."
-	$clean_content = strip_tags(trim($clean_content)); // remove white space on either side
-	$clean_content = htmlentities($clean_content, ENT_QUOTES); // Convert quotation marks to HTML entities
-	$clean_content = str_replace("&nbsp;", "", $clean_content); // replace $nbsp; with a space character
-	$clean_content = str_replace(array("\r", "\n"), '', $clean_content); // remove line breaks from CONTENT
-	//jjreader_log("clean_content vs clean_title");
-	//jjreader_log("clean_content = " .$clean_content);
-	//jjreader_log("clearn_title = " . $clean_title);
-	if (strpos($clean_content,$clean_title)===0 ){
-		$title="";
-	} 
-
-	// Also compare to content_plain if it exists.  ($content_plain is a plain text version, whereas $content has html)
-	if ($content_plain != ''){
-		$clean_content = html_entity_decode($content_plain); // First convert html entities to text (to ensure consistent comparision)
-		$clean_content = strip_tags(rtrim($clean_content,".")); // remove trailing "..."
-		$clean_content = strip_tags(trim($clean_content)); // remove white space on either side
-		$clean_content = htmlentities($clean_content, ENT_QUOTES); // Convert quotation marks to HTML entities
-		$clean_content = str_replace("&nbsp;", "", $clean_content); // replace $nbsp; with a space character
-		$clean_content = str_replace(array("\r", "\n"), '', $clean_content); // remove line breaks from CONTENT
-		//jjreader_log("COMPARISON #2: plain content: [". $clean_content . "] and title: [".$clean_title."]");
-		if (strpos($clean_content,$clean_title)===0 ){
-			$title="";
-		} 
-	}
-	return $title;
-}
-/*
-** Add a post to the jjreader_posts table in the database
-*/
-function add_reader_post($feedid,$title,$summary,$content,$published=0,$updated=0,$authorname='',$authorurl='',$avurl='',$permalink,$location,$photo,$type,$siteurl,$sitetitle){
-
-
+/* Add a post to the jjreader_posts table in the database */
+function jjreader_add_feeditem($feedid,$title,$summary,$content,$published=0,$updated=0,$authorname='',$authorurl='',$avurl='',$permalink,$location,$photo,$type,$siteurl,$sitetitle){
 	//jjreader_log("adding post: ".$permalink.": ".$title);
 	global $wpdb;
 	//jjreader_log("published = " . $published);
@@ -504,31 +522,23 @@ function add_reader_post($feedid,$title,$summary,$content,$published=0,$updated=
 	} 
 	// truncate the summary if it is too long
 	if (strlen(strip_tags($summary))>800) {
-
 		// since we're truncating, copy summary to content if content is empty
 		if (strlen($content)<1){
 			$content = $summary;
 		}
-
 		$summary = substr(strip_tags($summary),0,800) . "..."; 
 	}
 
-
-
-
-
-
-	
+	// If the summary is exactly the same as the content, then empty content since it is redundant
+	if ($summary == $content){
+		$content = "";
+	}
 	//If the author url is not known, then just use the site url
 	if (empty($authorurl)){$authorurl = $siteurl;}
-	// If the content begins with the title, then the post is probably an aside, so 
-	// the title should be dropped. 	
-	
-	
+
 	// Add the post (if it doesn't already exist)
 	$table_name = $wpdb->prefix . "jjreader_posts";
 	if($wpdb->get_var( "SELECT COUNT(*) FROM ".$table_name." WHERE permalink LIKE \"".$permalink."\";")<1){
-
 		$rows_affected = $wpdb->insert( $table_name,
 			array(	
 				'feedid'=>$feedid,
@@ -615,12 +625,7 @@ function jjreader_response ($response_type, $in_reply_to, $reply_to_title, $repl
 	$post_content = $_POST['content'];
 	$feed_item_id = $_POST['feed_item_id'];
 
-
 	jjreader_log("Response: " . $response_type . " — " . $in_reply_to);
-	//jjreader_log("[".$response_type."]");
-
-	//jjreader_log("post_title: ". $post_title);
-	//jjreader_log("post_content: ". $post_content);
 
 	//If the post has a title, then we will use the title for display. If not, use the url
 	// for display
@@ -651,9 +656,6 @@ function jjreader_response ($response_type, $in_reply_to, $reply_to_title, $repl
 		$post_kind = "like";
 	} 
 
-	//jjreader_log("title: ". $title);
-	//jjreader_log("content: ". $content);
-
 	//jjreader_log("posting response");
 	$my_post = array(
 		'post_title' => $title,
@@ -669,18 +671,6 @@ function jjreader_response ($response_type, $in_reply_to, $reply_to_title, $repl
 	
 	// If the post kinds plugin is installed, set the post kind
 	if (function_exists('set_post_kind')){
-		/* Assign a kind to a post
-		 	This uses the set_post_kind function, which is part of the post kinds plugin. 
-			Do this in the form "set_post_kind( $post, $kind)"
-				 See below for notes:
-				 * @param int|object $post The post for which to assign a kind.
-				 * @param string     $kind A kind to assign. Using an empty string or array will default to note.
-				 * @return mixed WP_Error on error. Array of affected term IDs on success.
-				 
-			//function set_post_kind( $post, $kind ) {
-			//   return Kind_Taxonomy::set_post_kind( $post, $kind );
-			//	}
-		*/ 
  		set_post_kind( $the_post_id , $post_kind);
 	}
 
@@ -695,11 +685,14 @@ function jjreader_response ($response_type, $in_reply_to, $reply_to_title, $repl
 	} else if ($response_type == "rsvp") {
 		$wpdb->update($wpdb->prefix . 'jjreader_posts', array('rsvped'=>get_permalink($the_post_id)), array('id'=>$feed_item_id));
 	}
-
 	
 	echo get_permalink($the_post_id);
 	wp_die(""); // this is required to terminate immediately and return a proper response
 }
+
+
+
+
 
 /*
 ** Identify and return feeds at a given url 
@@ -784,24 +777,20 @@ function jjreader_findFeeds($siteurl){
 }
 
 
-
-
-
 /*
-** Defines the interval for the cron job (5 minutes) 
+** Unsubscribe from a feed
 */
-function jjreader_cron_definer($schedules){
-	$schedules['fivemins'] = array(
-		'interval'=> 300,
-		'display'=>  __('Once Every 5 Minutes')
-	);
-
-	$schedules['twentymins'] = array(
-		'interval'=> 1200,
-		'display'=>  __('Once Every 5 Minutes')
-	);
-	return $schedules;
+add_action( 'wp_ajax_jjreader_unsubscribe', 'jjreader_unsubscribe' );
+function jjreader_unsubscribe ($feed_id){	
+//$wpdb->update($wpdb->prefix . 'jjreader_posts', array('liked'=>get_permalink($the_post_id)), array('id'=>$feed_item_id));
+//$wpdb->delete( 'table', array( 'ID' => 1 ) );
+	$feed_id = $_POST['feed_id'];
+	global $wpdb;
+	$unsubscribe = $wpdb->delete( $wpdb->prefix . "jjreader_following", array( 'ID' => $feed_id ) );
+	echo $unsubscribe;
+	wp_die();
 }
+
 
 /*
 ** Aggregator function (run using cron job or by refresh button)
@@ -858,7 +847,7 @@ function jjreader_aggregator() {
 				$photo='';//$item->get_image_tags();
 				$type='rss';
 				try{
-					add_reader_post($feedid,$title,$summary,$content,$published,$updated,$authorname,$authorurl,$avurl,$permalink,$location,$photo,$type,$siteurl,$sitetitle);
+					jjreader_add_feeditem($feedid,$title,$summary,$content,$published,$updated,$authorname,$authorurl,$avurl,$permalink,$location,$photo,$type,$siteurl,$sitetitle);
 				}catch(Exception $e){
 					jjreader_log("Exception occured: ".$e->getMessage());
 				}
@@ -888,8 +877,8 @@ function jjreader_aggregator() {
 				
 
 				try{
-					add_reader_post($feedid,$title,$summary,$content,$published,$updated,$authorname,$authorurl,$avurl,$permalink,$location,$photo,$type,$siteurl,$sitetitle);
-					//add_reader_post($permalink, $title, $content, $authorname, $authorurl, $time, $avurl, $siteurl, $feedurl, $type);
+					jjreader_add_feeditem($feedid,$title,$summary,$content,$published,$updated,$authorname,$authorurl,$avurl,$permalink,$location,$photo,$type,$siteurl,$sitetitle);
+					//jjreader_add_feeditem($permalink, $title, $content, $authorname, $authorurl, $time, $avurl, $siteurl, $feedurl, $type);
 				}catch(Exception $e){
 					jjreader_log("Exception occured: ".$e->getMessage());
 				}
@@ -1084,6 +1073,80 @@ function jjreader_fetch_hfeed($url,$feedtype) {
 
 
 
+/*
+**
+**   Utility functions
+**
+*/
+
+
+//Log changes to the database (adding sites, fetching posts, etc.)
+function jjreader_log($message){
+	global $wpdb;
+	$table_name = $wpdb->prefix . 'jjreader_log';
+
+	$wpdb->insert( 
+		$table_name, 
+		array( 
+			'date' => current_time( 'mysql' ), 
+			'log' => $message, 
+		) 
+	);
+
+}
+
+/* Remove titles for posts where the title is equal to the content (e.g. notes, asides, microblogs) */
+//In many rss feeds and h-feeds, the only indication of whether a title is redunant is that it duplicates 
+function clean_the_title($title,$content,$content_plain=''){
+	$clean_title = html_entity_decode($title); // First convert html entities to text (to ensure consistent comparision)
+	$clean_title = strip_tags(rtrim($clean_title,".")); // remove trailing "..."
+	$clean_title = strip_tags(trim($clean_title)); // remove white space on either side
+	$clean_title = htmlentities($clean_title, ENT_QUOTES); // Convert quotation marks to HTML entities
+	$clean_title = str_replace(array("\r", "\n"), '', $clean_title); // remove line breaks from title
+	$clean_title = str_replace("&nbsp;", "", $clean_title); // replace $nbsp; with a space character
+	$clean_title = str_replace(array("\r", "\n"), '', $clean_title); // remove line breaks from title
+	
+	$clean_content = html_entity_decode($content); // First convert html entities to text (to ensure consistent comparision)
+	$clean_content = strip_tags(rtrim($clean_content,".")); // remove trailing "..."
+	$clean_content = strip_tags(trim($clean_content)); // remove white space on either side
+	$clean_content = htmlentities($clean_content, ENT_QUOTES); // Convert quotation marks to HTML entities
+	$clean_content = str_replace("&nbsp;", "", $clean_content); // replace $nbsp; with a space character
+	$clean_content = str_replace(array("\r", "\n"), '', $clean_content); // remove line breaks from CONTENT
+	if (strpos($clean_content,$clean_title)===0 ){
+		$title="";
+	} 
+	// Also compare to content_plain if it exists.  ($content_plain is a plain text version, whereas $content has html)
+	if ($content_plain != ''){
+		$clean_content = html_entity_decode($content_plain); // First convert html entities to text (to ensure consistent comparision)
+		$clean_content = strip_tags(rtrim($clean_content,".")); // remove trailing "..."
+		$clean_content = strip_tags(trim($clean_content)); // remove white space on either side
+		$clean_content = htmlentities($clean_content, ENT_QUOTES); // Convert quotation marks to HTML entities
+		$clean_content = str_replace("&nbsp;", "", $clean_content); // replace $nbsp; with a space character
+		$clean_content = str_replace(array("\r", "\n"), '', $clean_content); // remove line breaks from CONTENT
+		//jjreader_log("COMPARISON #2: plain content: [". $clean_content . "] and title: [".$clean_title."]");
+		if (strpos($clean_content,$clean_title)===0 ){
+			$title="";
+		} 
+	}
+	return $title;
+}
+
+/* Return the first image or video from a post */
+function get_first_image($html) {
+    require_once('SimpleHTML.class.php')
+
+    $post_html = str_get_html($html);
+
+    $first_img = $post_html->find('img', 0);
+
+    if($first_img !== null) {
+        return $first_img->src;
+    }
+
+    return null;
+}
+
+
 /* 
 ** Returns true is the feed is of type rss 
 */
@@ -1108,9 +1171,10 @@ function User_datetime($datetime){
 }
 
 
-
 /*
-** Runs upon deactivating the plugin
+**
+**   Runs upon deactivating the plugin
+**
 */
 function jjreader_deactivate() {
 	// on deactivation remove the cron job 
@@ -1120,6 +1184,12 @@ function jjreader_deactivate() {
 	jjreader_log("deactivated plugin");
 }
 
+
+/*
+**
+**   Hooks and filters
+**
+*/
 
 /* Functions to run upon installation */ 
 register_activation_hook(__FILE__,'jjreader_install');

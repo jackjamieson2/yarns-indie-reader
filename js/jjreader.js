@@ -5,17 +5,24 @@
  **/
 (function($) {
 
-	
+/*
+**
+**   Run on initial page load
+**
+*/
 
+	/*
     //Hide the 'add site' form if javascript is enabled
     $('#jjreader-addSite-form').hide();
     //Show the 'add site' button if javascript is enable
     $('#jjreader-button-addSite').show();
+    */
 
     var pagenum =0; // Start at page 1
     //Load page 1 upon initial load
     jjreader_show_loading($('#jjreader-feed-container'));
     jjreader_showpage(pagenum);
+    jjreader_showsubscriptions();
 
 	 // The refresh button
     $("#jjreader-button-refresh").on("click", function() {
@@ -41,9 +48,316 @@
 			});
     });
     
-    
 
-    /* 
+
+/*
+**
+**   Click events
+**
+*/
+
+
+    //Toggle the field for adding subscriptions
+    /*
+
+    $("#jjreader-button-addSite").on("click", function() {
+        console.log('Clicked "Add Site" button');
+        $('#jjreader-addSite-form').show();
+        $(this).hide();
+    });
+    */
+
+
+
+ 	/* 
+ 	* The 'view feed' button 
+ 	*/
+	$("#jjreader-button-feed").on("click", function() {
+	
+		$('#jjreader-subscriptions').hide(); // Hide the subscription manager
+		$('#jjreader-feed-container').show(); // Show the feed
+		$('#jjreader-load-more').show(); // Show the load more button for the feed
+ 		
+ 	});
+
+
+ 	/* 
+ 	* The 'manage subscriptions' button 
+ 	*/
+ 	$("#jjreader-button-subscriptions").on("click", function() {
+		$('#jjreader-feed-container').hide(); // Hide the feed
+		$('#jjreader-load-more').hide(); // Hide the load more button for the feed
+ 		$('#jjreader-subscriptions').show(); // Show the subscription manager
+ 	});
+
+ 	/*
+ 	*  Unsubscribe buttons
+ 	*/
+    $( "body" ).on( "click", ".jjreader-button-unsubscribe", function() {
+		var the_button = $(this);
+		disable_button(the_button);
+ 		the_button.html("Unsubscribing...");
+ 		jjreader_show_loading(the_button);     	
+
+    	var parent = $(this).parent($('.jjreader-subscription-item'));
+    	var feed_id = parent.data('id');
+
+    	if (feed_id) {
+    		console.log('Unsubscribing from feed #' + feed_id);
+        	$.ajax({
+				url : jjreader_ajax.ajax_url,
+				type : 'post',
+				data : {
+					action : 'jjreader_unsubscribe',
+					feed_id: feed_id
+				},
+				success : function( response ) {
+					console.log ("Unsubscribed from " + feed_id + ". response = " + response);
+					parent.remove();
+				}
+			});
+        } 
+ 	});
+
+	/* 
+ 	* Load more button * To load the next page of posts
+ 	*/
+ 	 $("#jjreader-load-more").on("click", function() {
+ 		disable_button($(this));
+ 		$(this).html("Loading...");
+ 		jjreader_show_loading($(this));
+ 		jjreader_showpage(pagenum);
+ 	});
+
+
+ 	/* 
+ 	* Read more button * To expand a summary and view the full post
+ 	*/
+ 
+    $( "body" ).on( "click", ".jjreader-item-more", function() {
+    	$(this).hide();
+    	$(this).parent($('.jjreader-feed-item')).find($('.jjreader-item-summary')).hide();
+    	$(this).parent($('.jjreader-feed-item')).find($('.jjreader-item-content')).show();
+	});
+
+
+    /*
+    * Reply buttons
+    */
+    
+    // First, show the reply text when user clicks 'reply'
+    $( "body" ).on( "click", ".jjreader-reply", function() {
+
+    //$(".jjreader-reply").on("click", function() {
+    	console.log('Clicked reply button');
+
+    	$(this).parents('.jjreader-feed-item').find('.jjreader-reply-input').show();
+    }); 
+    
+    // Second, create reply post when user clicks 'Submit'
+    $( "body" ).on( "click", ".jjreader-reply-submit", function() {
+    //$(".jjreader-reply-submit").on("click", function() {
+        console.log('Clicked submit button');
+        reply_to = $(this).parents('.jjreader-feed-item').find('.jjreader-item-date').attr('href'); 
+        reply_to_title = $(this).parents('.jjreader-feed-item').find('.jjreader-item-title').text();
+        reply_to_content = $(this).parents('.jjreader-feed-item').find('.jjreader-item-content').html();
+        
+        title = $(this).parents('.jjreader-feed-item').find('.jjreader-reply-title').val();
+        content = $(this).parents('.jjreader-feed-item').find('.jjreader-reply-text').val();
+        feed_item_id = $(this).parents('.jjreader-feed-item').data('id');
+
+        type= "reply";
+        status = "draft";
+        jjreader_post(reply_to, reply_to_title, reply_to_content, type, status, title, content,feed_item_id, function(response){
+        	// This should return the post id as response
+        });	
+    });
+    
+    // Third, when user clicks 'Full editor', create a draft of the post, then open 
+    // the full post editor in a new tab
+	$( "body" ).on( "click", ".jjreader-reply-fulleditor", function() {
+	//$(".jjreader-reply-fulleditor").on("click", function() {
+           /* This should display the full editor (in a new tab?)
+    */
+
+    });     
+
+    /*
+    * Like buttons
+    */
+    $( "body" ).on( "click", ".jjreader-like", function() {
+    //$(".jjreader-like").on("click", function() {
+        console.log('Clicked like button');
+
+        if ($(this).data('link')){
+        	// If a like already exists, open it in a new tab
+        	openInNewTab($(this).data('link'));
+        	console.log($(this).data('link'));
+        } else {
+	        // If this feed item has not been liked, add a like to the blog
+
+	        disable_button($(this));
+	        jjreader_show_loading($(this));
+
+	        reply_to = $(this).parents('.jjreader-feed-item').find('.jjreader-item-date').attr('href'); 
+	        reply_to_title = $(this).parents('.jjreader-feed-item').find('.jjreader-item-title').text();
+	        reply_to_content = $(this).parents('.jjreader-feed-item').find('.jjreader-item-content').html();
+	        feed_item_id = $(this).parents('.jjreader-feed-item').data('id');
+	        this_response_button = $('*[data-id="'+feed_item_id+'"]').find($('.jjreader-like'))
+
+	        title = "";
+	        content = "";
+	        
+	        //Note: call jjreader_post with a callback to deal with the response
+	        // https://stackoverflow.com/questions/5797930/how-to-write-a-jquery-function-with-a-callback
+	        type = "like";
+	        status = "draft";
+	        
+	        jjreader_post(reply_to, reply_to_title, reply_to_content, type, status,title,content,this_response_button, function(response){
+	        
+	        });
+        
+        }
+       
+    });
+
+
+
+    
+    //Update feed url when radio button is clicked
+	$("#jjreader-addSite-form").on("click","input[name=jjreader_feed_option]", function() {
+		console.log("test");
+		var label = $("label[for='"+$(this).attr("id")+"']");
+
+		$("input[name=jjreader-feedurl]").val($(this).val());
+		$("span.jjreader-feed-type").text($("label[for='"+$(this).attr("id")+"']").find('.jjreader-feedpicker-type').text());
+		
+	});
+
+    
+        
+	// Find feeds based on site url 
+    $("#jjreader-addSite-findFeeds").on("click", function() {
+    	disable_button($(this));
+ 		$(this).html("Searching for feeds...");
+ 		var the_button = $(this);
+ 		jjreader_show_loading($(this));     	
+
+ 		// Clear any existing values for feed url and site title
+     	$("input[name=jjreader-sitetitle]").val("");	
+     	$("input[name=jjreader-feedurl]").val("");	
+     	$('.jjreader-feedpicker').empty();
+     	//$("input[name=jjreader-siteurl]").val(addhttp($("input[name=jjreader-siteurl]").val()));
+     	var new_siteURL = addhttp($("input[name=jjreader-siteurl]").val());
+     	$("input[name=jjreader-siteurl]").val(new_siteURL);
+     	if (new_siteURL) {
+        	$.ajax({
+				url : jjreader_ajax.ajax_url,
+				type : 'post',
+				data : {
+					action : 'jjreader_findFeeds',
+					siteurl: new_siteURL,
+				},
+				success : function( response ) {
+					enable_button(the_button); // $(this) won't work here, so we use the_button, which was created above
+ 					the_button.html("Find feeds");
+
+ 					
+
+				 	console.log(response);
+				 	var json_response = JSON.parse(response);
+					console.log(json_response);
+					$.each(json_response, function(i,item){
+						var r_type = json_response[i].type;
+						var r_data = json_response[i].data;
+						if (r_type=="title"){
+							// Set the sitetitle to the title of the site if found
+							$("input[name=jjreader-sitetitle]").val(r_data);	
+						} 
+						else {
+							// The only other response type is a feed (either rss or h-feed)
+							// Create radio buttons to choose between feed options	
+							var radio_name = "jjreader-feedpicker_" + i;
+							var radio_btn = '<input type="radio" name="jjreader_feed_option" value="'+r_data+'" id="'+radio_name+'" checked>';
+							radio_btn += ' <label for="'+radio_name+'">'+r_data+' (<span class="jjreader-feedpicker-type">'+r_type+'</span>)</label><br>';
+							$('.jjreader-feedpicker').append(radio_btn);
+							// Automatically set the feedurl to the first returned feed
+							/*if ($('.jjreader-feedpicker input').length ==1){
+								$("input[name=jjreader-feedurl]").val(r_data);	
+							}*/
+						}
+						console.log(json_response[i].type);
+						console.log(json_response[i].data);
+						// If >1 feeds were found, show the radio buttons
+						if ($('.jjreader-feedpicker input').length >1){
+							$('.jjreader-feedpicker').show();
+						}
+						// Check the first radio button
+						$('.jjreader-feedpicker input').first().trigger("click");
+						//$('.jjreader-feedpicker input').first().prop("checked", true).trigger("click");
+					});
+					// Show the feed chooser
+					$('#jjreader-choose-feed').show();
+				}
+			});
+        } else {
+            jjreader_error("You must enter a Site URL. "+ new_siteURL + " failed.", $(this));
+        }
+    });
+
+	// CLICK: When the user clicks the submit button to add a subscription	
+    $("#jjreader-addSite-submit").on("click", function() {
+    		disable_button($(this));
+	 		$(this).html("Adding feed...");
+	 		var the_button = $(this);
+	 		jjreader_show_loading($(this));     	
+
+	        console.log('Clicked to submit a new subscription');
+			// Remove any existing errors
+			clearErrors();
+
+			var new_siteURL = $("input[name=jjreader-siteurl]").val();
+	        var new_feedURL = $("input[name=jjreader-feedurl]").val();
+	        var new_siteTitle = $("input[name=jjreader-sitetitle]").val();
+	        var new_feedType = $(".jjreader-feed-type").text();
+
+	        if (new_feedURL) {
+	        	console.log("Adding feed " + new_feedURL);
+	        	$.ajax({
+					url : jjreader_ajax.ajax_url,
+					type : 'post',
+					data : {
+						action : 'jjreader_new_subscription',
+						siteurl: new_siteURL,
+						feedurl: new_feedURL,
+						sitetitle: new_siteTitle,
+						feedtype: new_feedType,
+					},
+					success : function( response ) {
+						enable_button(the_button); // $(this) won't work here, so we use the_button, which was created above
+						
+	 					the_button.html("Submit");
+						$("#jjreader-choose-feed").hide();
+						jjreader_msg(response, $("#jjreader-choose-feed"));
+						console.log(response);
+						jjreader_showsubscriptions();
+					}
+				});
+	           
+	        } else {
+	            jjreader_error("You must enter a Feed URL. "+ new_feedURL + " failed.", $(this));
+	        }
+	    
+    });
+
+
+/*
+**
+**   Main functions
+**
+*/
+
+/* 
     ** Display a page from the feed database
     */
     function jjreader_showpage() {
@@ -88,114 +402,28 @@
 	    	console.log ("user is not logged in"); 
 	    }
     }
-
- 	/* 
- 	* The 'load more' button 
- 	*/
- 	$("#jjreader-load-more").on("click", function() {
- 		disable_button($(this));
- 		$(this).html("Loading...");
- 		jjreader_show_loading($(this));
- 		jjreader_showpage(pagenum);
- 	});
-
-
- 	/* 
- 	* Read more button
- 	*/
- 
-    $( "body" ).on( "click", ".jjreader-item-more", function() {
-    	$(this).hide();
-    	$(this).parent($('.jjreader-feed-item')).find($('.jjreader-item-summary')).hide();
-    	$(this).parent($('.jjreader-feed-item')).find($('.jjreader-item-content')).show();
-
-
-	});
-
-
-    /*
-    * Reply buttons
-    */
     
-    // First, show the reply text when user clicks 'reply'
-    $( "body" ).on( "click", ".jjreader-reply", function() {
-
-    //$(".jjreader-reply").on("click", function() {
-    	console.log('Clicked reply button');
-
-    	$(this).parents('.jjreader-feed-item').find('.jjreader-reply-input').show();
-    }); 
-    
-    // Second, create reply post when user clicks 'Submit'
-    $( "body" ).on( "click", ".jjreader-reply-submit", function() {
-    //$(".jjreader-reply-submit").on("click", function() {
-        console.log('Clicked submit button');
-        reply_to = $(this).parents('.jjreader-feed-item').find('.jjreader-item-date').attr('href'); 
-        reply_to_title = $(this).parents('.jjreader-feed-item').find('.jjreader-item-title').text();
-        reply_to_content = $(this).parents('.jjreader-feed-item').find('.jjreader-item-content').html();
-        
-        title = $(this).parents('.jjreader-feed-item').find('.jjreader-reply-title').val();
-        content = $(this).parents('.jjreader-feed-item').find('.jjreader-reply-text').val();
-        feed_item_id = $(this).parents('.jjreader-feed-item').data('id');
+    /* Load the subscription list */
+    function jjreader_showsubscriptions() {	    
+	    if ($('#jjreader-subscription-list').length>0) {
+	    	 jjreader_show_loading($('#jjreader-subscription-list'));
+	    	//user is logged in so proceed
+	    	 $.ajax({
+				url : jjreader_ajax.ajax_url,
+				type : 'post',
+				data : {
+					action : 'jjreader_subscription_list'
+				},
+				success : function( response ) {
+					$('#jjreader-subscription-list').html(response);
+				}
+			});
+	    } 
+    }
 
 
-        type= "reply";
-        status = "draft";
-        jjreader_post(reply_to, reply_to_title, reply_to_content, type, status, title, content,feed_item_id, function(response){
-        	// This should return the post id as response
-        });	
-    });
-    
-    // Third, when user clicks 'Full editor', create a draft of the post, then open 
-    // the full post editor in a new tab
-	$( "body" ).on( "click", ".jjreader-reply-fulleditor", function() {
-	//$(".jjreader-reply-fulleditor").on("click", function() {
-           /* This should display the full editor (in a new tab?)
-    */
 
-    });     
-
-    /*
-    * Like buttons
-    */
-    $( "body" ).on( "click", ".jjreader-like", function() {
-    //$(".jjreader-like").on("click", function() {
-        console.log('Clicked like button');
-
-        if ($(this).data('link')){
-        	// If a like already exists, open it in a new tab
-        	openInNewTab($(this).data('link'));
-        	console.log($(this).data('link'));
-        } else {
-	        // If this feed item has not been liked, add a like to the blog
-
-	        disable_button($(this));
-
-	        jjreader_show_loading($(this));
-
-	        reply_to = $(this).parents('.jjreader-feed-item').find('.jjreader-item-date').attr('href'); 
-	        reply_to_title = $(this).parents('.jjreader-feed-item').find('.jjreader-item-title').text();
-	        reply_to_content = $(this).parents('.jjreader-feed-item').find('.jjreader-item-content').html();
-	        feed_item_id = $(this).parents('.jjreader-feed-item').data('id');
-	        this_response_button = $('*[data-id="'+feed_item_id+'"]').find($('.jjreader-like'))
-
-	        title = "";
-	        content = "";
-	        
-	        //Note: call jjreader_post with a callback to deal with the response
-	        // https://stackoverflow.com/questions/5797930/how-to-write-a-jquery-function-with-a-callback
-	        type = "like";
-	        status = "draft";
-	        
-	        jjreader_post(reply_to, reply_to_title, reply_to_content, type, status,title,content,this_response_button, function(response){
-	        
-	        });
-        
-        }
-       
-    });
-    
-    // Generic post creator
+      // Generic post creator
     /* Call this from within likes, replies, etc.  It tells the backend to create a post
        and returns the post ID (if successful) or 0 (if unsuccessful)
        
@@ -243,139 +471,15 @@
 
     
 
-    //Toggle the field for adding subscriptions
-    $("#jjreader-button-addSite").on("click", function() {
-        console.log('Clicked "Add Site" button');
-        $('#jjreader-addSite-form').show();
-        $(this).hide();
-    });
-    
-    
-    //Update feed url when radio button is clicked
-	$("#jjreader-addSite-form").on("click","input[name=jjreader_feed_option]", function() {
-		console.log("test");
-		var label = $("label[for='"+$(this).attr("id")+"']");
+/*
+**
+**   Utility Functions
+**
+*/
 
-		$("input[name=jjreader-feedurl]").val($(this).val());
-		$("span.jjreader-feed-type").text($("label[for='"+$(this).attr("id")+"']").find('.jjreader-feedpicker-type').text());
-		
-	});
 
-    
-        
-	// Find feeds based on site url 
-    $("#jjreader-addSite-findFeeds").on("click", function() {
-    	disable_button($(this));
- 		$(this).html("Searching for feeds...");
- 		var the_button = $(this);
- 		jjreader_show_loading($(this));     	
 
- 		// Clear any existing values for feed url and site title
-     	$("input[name=jjreader-sitetitle]").val("");	
-     	$("input[name=jjreader-feedurl]").val("");	
-     	$('.jjreader-feedpicker').empty();
-     	//$("input[name=jjreader-siteurl]").val(addhttp($("input[name=jjreader-siteurl]").val()));
-     	var new_siteURL = addhttp($("input[name=jjreader-siteurl]").val());
-     	$("input[name=jjreader-siteurl]").val(new_siteURL);
-     	if (new_siteURL) {
-        	$.ajax({
-				url : jjreader_ajax.ajax_url,
-				type : 'post',
-				data : {
-					action : 'jjreader_findFeeds',
-					siteurl: new_siteURL,
-				},
-				success : function( response ) {
-					enable_button(the_button); // $(this) won't work here, so we use the_button, which was created above
- 					the_button.html("Find feeds");
- 					
-
-				 	console.log(response);
-				 	var json_response = JSON.parse(response);
-					console.log(json_response);
-					$.each(json_response, function(i,item){
-						var r_type = json_response[i].type;
-						var r_data = json_response[i].data;
-						if (r_type=="title"){
-							// Set the sitetitle to the title of the site if found
-							$("input[name=jjreader-sitetitle]").val(r_data);	
-						} 
-						else {
-							// The only other response type is a feed (either rss or h-feed)
-							// Create radio buttons to choose between feed options	
-							var radio_name = "jjreader-feedpicker_" + i;
-							var radio_btn = '<input type="radio" name="jjreader_feed_option" value="'+r_data+'" id="'+radio_name+'" checked>';
-							radio_btn += ' <label for="'+radio_name+'">'+r_data+' (<span class="jjreader-feedpicker-type">'+r_type+'</span>)</label><br>';
-							$('.jjreader-feedpicker').append(radio_btn);
-							// Automatically set the feedurl to the first returned feed
-							/*if ($('.jjreader-feedpicker input').length ==1){
-								$("input[name=jjreader-feedurl]").val(r_data);	
-							}*/
-						}
-						console.log(json_response[i].type);
-						console.log(json_response[i].data);
-						// If >1 feeds were found, show the radio buttons
-						if ($('.jjreader-feedpicker input').length >1){
-							$('.jjreader-feedpicker').show();
-						}
-						// Check the first radio button
-						$('.jjreader-feedpicker input').first().trigger("click");
-						//$('.jjreader-feedpicker input').first().prop("checked", true).trigger("click");
-					});
-				}
-			});
-        } else {
-            jjreader_error("You must enter a Site URL. "+ new_siteURL + " failed.", $(this));
-        }
-    });
-
-	// CLICK: When the user clicks the submit button to add a subscription	
-    $("#jjreader-addSite-submit").on("click", function() {
-    		disable_button($(this));
-	 		$(this).html("Adding feed...");
-	 		var the_button = $(this);
-	 		jjreader_show_loading($(this));     	
-
-	        console.log('Clicked to submit a new subscription');
-			// Remove any existing errors
-			clearErrors();
-
-			var new_siteURL = $("input[name=jjreader-siteurl]").val();
-	        var new_feedURL = $("input[name=jjreader-feedurl]").val();
-	        var new_siteTitle = $("input[name=jjreader-sitetitle]").val();
-	        var new_feedType = $(".jjreader-feed-type").text();
-
-	        if (new_feedURL) {
-	        	console.log("Adding feed " + new_feedURL);
-	        	$.ajax({
-					url : jjreader_ajax.ajax_url,
-					type : 'post',
-					data : {
-						action : 'jjreader_new_subscription',
-						siteurl: new_siteURL,
-						feedurl: new_feedURL,
-						sitetitle: new_siteTitle,
-						feedtype: new_feedType,
-					},
-					success : function( response ) {
-						enable_button(the_button); // $(this) won't work here, so we use the_button, which was created above
-						
-	 					the_button.html("Submit");
-
-						jjreader_msg(response, $("#jjreader-addSite-submit"));
-						console.log(response);
-					}
-				});
-	           
-	        } else {
-	            jjreader_error("You must enter a Feed URL. "+ new_feedURL + " failed.", $(this));
-	        }
-	    
-    });
-    
-   
-    
-    // Clears any errors or highlights that were displayed previously 
+ // Clears any errors or highlights that were displayed previously 
 	function clearErrors(){
 		
 		$(".ui-state-error").each(function(){
@@ -391,8 +495,7 @@
     	//construct the error box
     	var error_num = $(".ui-state-error").length + 1;
     	var error_id = "error-" + error_num;
-    	error_content = '<div id="' + error_id + '" class="ui-state-error ui-corner-all" style="padding: 0 .7em;">';
-    	error_content += '<p><span class="ui-icon ui-icon-alert" style="float: left; margin-right: .3em;"></span>';
+    	error_content = '<div id="' + error_id + '" class="ui-state-error" style="padding: 0 .7em;">';
 		error_content += message;
     	error_content += '</div>';
     	
@@ -410,8 +513,7 @@
     	//construct the error box
     	var msg_num = $("highlight").length + 1;
     	var msg_id = "msg-" + msg_num;
-    	msg_content = '<div id="' + msg_id + '" class="ui-state-highlight ui-corner-all" style="padding: 0 .7em;">';
-    	msg_content += '<p><span class="ui-icon ui-icon-alert" style="float: left; margin-right: .3em;"></span>';
+    	msg_content = '<div id="' + msg_id + '" class="ui-state-highlight" style="padding: 0 .7em;">';
 		msg_content += message;
     	msg_content += '</div>';
     	
