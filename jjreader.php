@@ -43,6 +43,10 @@ if ( ! class_exists( 'phpUri' ) ) {
 	require_once plugin_dir_path( __FILE__ ) .  'lib/phpuri.php'; // For converting relative URIs to absolute 
 }
 
+if ( ! class_exists( 'simple_html_dom_node' ) ) {
+	require_once plugin_dir_path( __FILE__ ) .  'lib/simple_html_dom.php'; // For working with HTML files (e.g. finding images)
+}
+
 
 global $jjreader_db_version;
 $jjreader_db_version = "1.5"; // Updated database structure
@@ -330,13 +334,10 @@ function jjreader_subscription_list(){
 	$items = $wpdb->get_results(
 		'SELECT * 
 		FROM  `'.$wpdb->prefix . 'jjreader_following` 
-		ORDER BY  `sitetitle` COLLATE  ASC;' 
+		ORDER BY  `sitetitle`  ASC;'  
 	);
 	// Note: Currently this sorts the subscription list as case sensitive. It would be better to sort case insensitive. 
 
-
-
-	
 	// Generate HTML for each subscription item
 	if ( !empty( $items ) ) { 			
 		foreach ( $items as $item ) {
@@ -507,6 +508,9 @@ function jjreader_display_page($pagenum){
 function jjreader_add_feeditem($feedid,$title,$summary,$content,$published=0,$updated=0,$authorname='',$authorurl='',$avurl='',$permalink,$location,$photo,$type,$siteurl,$sitetitle){
 	//jjreader_log("adding post: ".$permalink.": ".$title);
 	global $wpdb;
+
+
+
 	//jjreader_log("published = " . $published);
 	if($published < 1){
 		$published = time();
@@ -520,19 +524,32 @@ function jjreader_add_feeditem($feedid,$title,$summary,$content,$published=0,$up
 	if (strlen($summary) <1) {
 		$summary = $content;
 	} 
-	// truncate the summary if it is too long
-	if (strlen(strip_tags($summary))>800) {
+	// truncate the summary if it is too long or contains more than one image
+	if (strlen(strip_tags($summary))>500 ) { //|| count($summary->find('img'))>1  
 		// since we're truncating, copy summary to content if content is empty
 		if (strlen($content)<1){
 			$content = $summary;
 		}
-		$summary = substr(strip_tags($summary),0,800) . "..."; 
+		$summary = substr(strip_tags($summary),0,500) . "..."; 
 	}
+
+
 
 	// If the summary is exactly the same as the content, then empty content since it is redundant
 	if ($summary == $content){
 		$content = "";
 	}
+
+	// If there is no featured photo defined, search for a first image in the content
+		// For now set photo to "" and ignore any h-feed photo
+	$photo = "";
+	
+
+	
+	
+	
+	
+
 	//If the author url is not known, then just use the site url
 	if (empty($authorurl)){$authorurl = $siteurl;}
 
@@ -549,8 +566,6 @@ function jjreader_add_feeditem($feedid,$title,$summary,$content,$published=0,$up
 				'content' => $content,
 				'published'=> $published,
 				'updated'=> $updated,
-				//'published'=> UTC_datetime($published),
-				//'updated'=> UTC_datetime($updated),
 				'authorname' => $authorname,
 				'authorurl' => $authorurl,
 				'authoravurl' => $avurl,
@@ -562,7 +577,13 @@ function jjreader_add_feeditem($feedid,$title,$summary,$content,$published=0,$up
 			 ) );
 
 		if($rows_affected == false){
+			$lastquery = $wpdb->last_query;
+			$lasterror = $wpdb->last_error;
 			jjreader_log("could not insert post into database!");
+			jjreader_log($lastquery);
+			jjreader_log($lasterror);
+
+
 			die("could not insert post into database!" .$permalink.": ".$title);
 		}else{
 			jjreader_log("added ".$permalink.": ".$title);
@@ -570,6 +591,7 @@ function jjreader_add_feeditem($feedid,$title,$summary,$content,$published=0,$up
 	}else{
 		jjreader_log("post already exists: " .$permalink.": ".$title);
 	}	
+
 }
 
 /*
@@ -844,7 +866,7 @@ function jjreader_aggregator() {
 				$avurl='';
 				$permalink=$item->get_permalink();
 				$location='';
-				$photo='';//$item->get_image_tags();
+				$photo="";
 				$type='rss';
 				try{
 					jjreader_add_feeditem($feedid,$title,$summary,$content,$published,$updated,$authorname,$authorurl,$avurl,$permalink,$location,$photo,$type,$siteurl,$sitetitle);
@@ -868,9 +890,10 @@ function jjreader_aggregator() {
 				$avurl = ""; // none for now — TO DO: Fetch avatar from h-card if possible
 				$permalink = $item['url'];
 				$location='';
+				
 				$photo='';
 				//$location = $item['location'];
-				//$photo = $item['photo'];
+				
 				$siteurl=$item['siteurl'];
 				$feedurl = $url;
 				$type = $item['type'];
@@ -1013,12 +1036,16 @@ function jjreader_fetch_hfeed($url,$feedtype) {
 				$log_entry .= "<li>item_author = ". $item_author ."</li>";
 
 
+
+
 			//handle h-entry
 			if ("{$item['type'][0]}" == "h-entry"){
 				//jjreader_log ("found h-entry");
 				//jjreader_log("{$item['properties']['url'][0]}");
 				$item_content = "{$item['properties']['content'][0]['html']}";
 				$item_content_plain = "{$item['properties']['content'][0]['value']}";
+
+
 				$log_entry .= "<li>item_content = ". $item_content ."</li>";
 				$log_entry .= "<li>item_content_plain = ". $item_content_plain ."</li>";
 
@@ -1129,21 +1156,6 @@ function clean_the_title($title,$content,$content_plain=''){
 		} 
 	}
 	return $title;
-}
-
-/* Return the first image or video from a post */
-function get_first_image($html) {
-    require_once('SimpleHTML.class.php')
-
-    $post_html = str_get_html($html);
-
-    $first_img = $post_html->find('img', 0);
-
-    if($first_img !== null) {
-        return $first_img->src;
-    }
-
-    return null;
 }
 
 
