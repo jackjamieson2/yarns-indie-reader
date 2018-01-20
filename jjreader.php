@@ -43,9 +43,7 @@ if ( ! class_exists( 'phpUri' ) ) {
 	require_once plugin_dir_path( __FILE__ ) .  'lib/phpuri.php'; // For converting relative URIs to absolute 
 }
 
-if ( ! class_exists( 'simple_html_dom_node' ) ) {
-	require_once plugin_dir_path( __FILE__ ) .  'lib/simple_html_dom.php'; // For working with HTML files (e.g. finding images)
-}
+
 
 
 global $jjreader_db_version;
