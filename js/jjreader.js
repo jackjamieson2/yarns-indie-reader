@@ -137,8 +137,12 @@
     $( "body" ).on( "click", ".jjreader-item-more", function() {
     	$(this).hide();
     	$(this).parent($('.jjreader-feed-item')).find($('.jjreader-item-summary')).hide();
+    	//$(this).parent($('.jjreader-feed-item')).find($('.jjreader-item-photo')).hide();
     	$(this).parent($('.jjreader-feed-item')).find($('.jjreader-item-content')).show();
-	});
+    	$('body').scrollTo($(this).parent($('.jjreader-feed-item')), 800);
+
+    	//$('body').scrollTo('#target'); // Scroll screen to target element
+	}); 
 
 
     /*

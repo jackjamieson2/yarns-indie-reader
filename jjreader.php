@@ -46,6 +46,7 @@ if ( ! class_exists( 'phpUri' ) ) {
 
 
 
+
 global $jjreader_db_version;
 $jjreader_db_version = "1.5"; // Updated database structure
 	//version 1.5 - added tags to 'following' table 
@@ -477,10 +478,20 @@ function jjreader_display_page($pagenum){
 			if ($item->title !=""){
 				$the_page .= '<a class="jjreader-item-title" href="'.$item->permalink.'">'.$item->title.'</a>';
 			}
+			if (strlen($item->photo)>0){
+				//the feed item has a photo
+				$the_photo = json_decode($item->photo);
+
+
+				$the_page .='<div class="jjreader-item-photo">';
+				$the_page .='<img src="'.$the_photo->src.'" alt="'.$the_photo->alt.'">';
+				$the_page .='</div>';
+			}
+			
 			$the_page .='<div class="jjreader-item-summary">'. $item->summary.'</div><!--.jjreader-item-summary-->'; 
 
 			// Display content if it exists (i.e. it is an expansion of the summary)
-			if ($content != ""){
+			if (strlen($item->content)>0 ){
 				$the_page .='<button class="jjreader-item-more">Read more...</button><!--.jjreader-item-more-->'; 
 				$the_page .='<div class="jjreader-item-content jjreader-hidden">';
 				$the_page .= $item->content;
@@ -501,7 +512,7 @@ function jjreader_display_page($pagenum){
 	}
 	wp_die(); // this is required to terminate immediately and return a proper response
 }
-
+ 
 /* Add a post to the jjreader_posts table in the database */
 function jjreader_add_feeditem($feedid,$title,$summary,$content,$published=0,$updated=0,$authorname='',$authorurl='',$avurl='',$permalink,$location,$photo,$type,$siteurl,$sitetitle){
 	//jjreader_log("adding post: ".$permalink.": ".$title);
@@ -517,6 +528,29 @@ function jjreader_add_feeditem($feedid,$title,$summary,$content,$published=0,$up
 	$published = date('Y-m-d H:i:s',$published);
 	//jjreader_log("published3 = " . $published);
 	$updated = date('Y-m-d H:i:s',$updated);
+
+
+	// If there is no featured photo defined, search for a first image in the content
+		// For now set photo to "" and ignore any h-feed photo
+	//$photo = "";
+	$photos = findPhotos($content);
+
+	if (count($photos)<1){
+		$photos = findPhotos($summary);
+	}
+
+	if (count($photos) > 0){$photo = json_encode($photos[0]);}
+
+
+	//for debugging only
+	$temp_log ='';
+	foreach ($photos as $item) {
+		$temp_log .= $item . "\n";
+	}
+	jjreader_log($temp_log);
+	
+
+
 
 	// if there is no summary, copy the content to the summary
 	if (strlen($summary) <1) {
@@ -538,14 +572,6 @@ function jjreader_add_feeditem($feedid,$title,$summary,$content,$published=0,$up
 		$content = "";
 	}
 
-	// If there is no featured photo defined, search for a first image in the content
-		// For now set photo to "" and ignore any h-feed photo
-	$photo = "";
-	
-
-	
-	
-	
 	
 
 	//If the author url is not known, then just use the site url
@@ -1103,6 +1129,20 @@ $counter ++;
 **
 */
 
+
+function findPhotos($html){
+	jjreader_log("Finding photos...");
+	$dom = new DOMDocument;
+	$dom->loadHTML($html);
+	foreach ($dom->getElementsByTagName('img') as $node) {
+		$src= $node->getAttribute( 'src' );
+		$alt = $node->getAttribute( 'alt' );
+		jjreader_log("src = ." . $src . " | alt = " . $alt);
+		$returnArray[] = array("src"=>$src, "alt"=>$alt);		
+	}
+	return $returnArray;
+	jjreader_log(serialize($returnArray));
+} 
 
 //Log changes to the database (adding sites, fetching posts, etc.)
 function jjreader_log($message){

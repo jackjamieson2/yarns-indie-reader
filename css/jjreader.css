@@ -67,10 +67,21 @@
 	color:#3f3f3f;
 }
 
-#jjreader-feed-container .jjreader-item-title{
+#jjreader-feed-container .jjreader-item-title {
 	font-weight:bold;
 	color:#3f3f3f;
 	display:block;
+}
+
+#jjreader-feed-container .jjreader-item-photo {
+	height: 25rem;
+	overflow: hidden;
+	position:relative;
+}
+
+#jjreader-feed-container .jjreader-item-photo img {
+  max-width:100%;
+  max-height:100%;
 }
 
 #jjreader-feed-container .jjreader-item-content {}
