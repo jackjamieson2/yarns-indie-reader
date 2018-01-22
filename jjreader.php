@@ -992,7 +992,12 @@ function jjreader_fetch_hfeed($url,$feedtype) {
 		$counter = 0;
 
 		foreach ($hfeed[$hfeed_path] as $item) {
-			$counter ++;
+			if ("{$item['type'][0]}" == 'h-entry' ||
+				"{$item['type'][0]}" == 'h-event' )
+			{
+				// Only parse supported types (h-entry, h-event... more to come)
+
+$counter ++;
 			//jjreader_log("parsing h-feed item #".$counter.": "."{$item['properties']['name'][0]}");
 			$item_name = "{$item['properties']['name'][0]}";
 			$item_type = "{$item['type'][0]}";
@@ -1077,6 +1082,10 @@ function jjreader_fetch_hfeed($url,$feedtype) {
 				"featured"=>$item_featured,
 				"siteurl"=>$site_url
 			);
+
+			}
+
+			
 		}
 
 		//jjreader_log("hfeed items = " . json_decode($hfeed_items));
