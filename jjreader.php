@@ -729,9 +729,7 @@ function jjreader_findFeeds($siteurl){
 	if(!empty($html)){ //if any html is actually returned
 		$dom->loadHTML($html);
 		$thetitle = $dom->getElementsByTagName("title");
-		//echo $thetitle[0]->nodeValue;
-		$returnArray[] = array("type"=>"title", "data"=>$thetitle[0]->nodeValue);
-		
+		$returnArray[] = array("type"=>"title", "data"=>$thetitle[0]->nodeValue);		
 		
 		$website_links = $dom->getElementsByTagName("link");
 		// Check for feeds as <link> elements
@@ -739,27 +737,21 @@ function jjreader_findFeeds($siteurl){
 
 		if($website_links->length > 0){
 			foreach($website_links as $row){
-				if (isRSS($row->getAttribute("type"))){
-					// Convert relative feed URL to absolute URL if needed
-					$feedurl = phpUri::parse($siteurl)->join($row->getAttribute("href"));
+				// Convert relative feed URL to absolute URL if needed
+				$feedurl = phpUri::parse($siteurl)->join($row->getAttribute("href"));
+
+				if (isRSS($row->getAttribute("type"))){ // Check for rss feeds first
 					//Return the feed type and absolute feed url 
 					$returnArray[] = array("type"=>$row->getAttribute("type"), "data"=>$feedurl);
 				}
-				/*if ($row->getAttribute("type")=='application/rss+xml'||
-					$row->getAttribute("type")=='application/atom+xml'||
-					$row->getAttribute("type")=='text/xml' ) {
-
-				}*/
-				elseif($row->getAttribute("type")=='text/html'){
+				elseif($row->getAttribute("type")=='text/html'){ // Check for h-feeds declared using a <link> tag
 					$returnArray[] = array("type"=>"h-feed", "data"=>$feedurl);
-					$found_hfeed = TRUE; 
+					$found_hfeed = TRUE; // H-feed has been found, so we stop looking
 				}
 			}
 		}
 
 		// Also here check for h-feed in the actual html
-			//$html = '<a class="h-card" href="https://waterpigs.co.uk/">Barnaby Walters</a>';
-			//$mf = Mf2\fetch($siteurl);
 			$mf = Mf2\parse($html,$siteurl);
 			$output_log ="Output: <br>";
 
@@ -789,8 +781,6 @@ function jjreader_findFeeds($siteurl){
 				}
 
 			}
-			//jjreader_log($output_log);
-
 		echo json_encode($returnArray);
 	}
 	wp_die(); // this is required to terminate immediately and return a proper response
