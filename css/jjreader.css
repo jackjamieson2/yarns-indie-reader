@@ -43,7 +43,7 @@
 	padding: .5rem;
 }
 
-#jjreader-feed-container .jjreader-feed-item {
+#jjreader .jjreader-feed-item {
 	background: #fff;
 	padding: .5rem;
 	border: 1px solid #e1e1e1;
@@ -52,70 +52,69 @@
 }
 
 
-#jjreader-feed-container .jjreader-item-meta {
+.jjreader-feed-item .jjreader-item-meta {
 	border-bottom: 1px solid #ddd;
 }
 
-#jjreader-feed-container a.jjreader-item-date {
+.jjreader-feed-item  a.jjreader-item-date {
 	font-size: small;	
 	color:#888;
 }
 
-#jjreader-feed-container a.jjreader-item-authorname {
+.jjreader-feed-item  a.jjreader-item-authorname {
 	font-weight:bold;
 	font-size:1rem;
 	color:#3f3f3f;
 }
 
-#jjreader-feed-container .jjreader-item-title {
+.jjreader-feed-item  .jjreader-item-title {
 	font-weight:bold;
 	color:#3f3f3f;
 	display:block;
 }
 
-#jjreader-feed-container .jjreader-item-photo {
+.jjreader-feed-item .jjreader-item-photo {
 	height: 25rem;
 	overflow: hidden;
 	position:relative;
 }
 
-#jjreader-feed-container .jjreader-item-photo img {
+.jjreader-feed-item .jjreader-item-photo img {
   max-width:100%;
   max-height:100%;
 }
 
-#jjreader-feed-container .jjreader-item-content {}
 
-#jjreader-feed-container .jjreader-response-controls{
+.jjreader-feed-item .jjreader-response-controls{
 	display:inline-block;
 	width:50%;
 }
 
-#jjreader-feed-container .jjreader-like::before {
+.jjreader-feed-item  .jjreader-like::before {
 	content:"Like";
 }
 
-#jjreader-feed-container .jjreader-like.jjreader-response-exists::before {
+.jjreader-feed-item  .jjreader-like.jjreader-response-exists::before {
 	content:"Liked";
 }
 
-#jjreader-feed-container .jjreader-reply::before {
+.jjreader-feed-item  .jjreader-reply::before {
 	content:"Reply";
 }
 
-#jjreader-feed-container .jjreader-reply.jjreader-response-exists::before {
+.jjreader-feed-item  .jjreader-reply.jjreader-response-exists::before {
 	content:"Replied";
 }
 
-#jjreader-feed-container .jjreader-replies:empty{
+.jjreader-feed-item  .jjreader-replies:empty{
 	display:none;
 }
-#jjreader-feed-container .jjreader-replies::before {
+.jjreader-feed-item  .jjreader-replies::before {
 	content:"Your responses:";
 }
 
 
-#jjreader-feed-container .jjreader-replies {
+.jjreader-feed-item  .jjreader-replies {
 
 	display:inline-block;
 	width:50%;
@@ -125,12 +124,49 @@
 	text-align: right;
 }
 
-#jjreader-feed-container .jjreader-replies a {
+.jjreader-feed-item  .jjreader-replies a {
 	display:inline-block;
 	padding:0.1em 0.2em;
 	margin: 0.2em 0 0 1em;
 	border: 1px solid #dbd4d4;;
 }
+
+
+/* full screen pop-up (full view for posts) */
+/* The Modal (background) */
+#jjreader-full-box {
+  position: fixed;
+  z-index: 1;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: rgba(0,0,0,0.9);
+}
+
+/* The Close Button */
+#jjreader-full-close {
+  color: white;
+  position: absolute;
+  top: 50px;
+  right: 25px;
+  font-size: 35px;
+  font-weight: bold;
+  cursor:pointer;
+}
+/* Modal Content */
+#jjreader-full-content {
+  position: relative;
+  background-color: #fefefe;
+  margin: 3rem auto;
+  padding: 0;
+  width: 90%; 
+  max-width:800px;
+
+}
+
+
 
 
 /* 

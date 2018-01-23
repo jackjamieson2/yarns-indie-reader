@@ -11,12 +11,7 @@
 **
 */
 
-	/*
-    //Hide the 'add site' form if javascript is enabled
-    $('#jjreader-addSite-form').hide();
-    //Show the 'add site' button if javascript is enable
-    $('#jjreader-button-addSite').show();
-    */
+
 
     var pagenum =0; // Start at page 1
     //Load page 1 upon initial load
@@ -135,13 +130,39 @@
  	*/
  
     $( "body" ).on( "click", ".jjreader-item-more", function() {
-    	$(this).hide();
-    	$(this).parent($('.jjreader-feed-item')).find($('.jjreader-item-summary')).hide();
-    	//$(this).parent($('.jjreader-feed-item')).find($('.jjreader-item-photo')).hide();
-    	$(this).parent($('.jjreader-feed-item')).find($('.jjreader-item-content')).show();
-    	$('body').scrollTo($(this).parent($('.jjreader-feed-item')), 800);
+    	var feed_item_id = $(this).parents('.jjreader-feed-item').data('id');
+	    var this_button = $(this);
+	    var this_button_html = this_button.html();
+	    jjreader_show_loading(this_button);
 
-    	//$('body').scrollTo('#target'); // Scroll screen to target element
+
+    	
+    	 $.ajax({
+			url : jjreader_ajax.ajax_url,
+			type : 'post',
+			data : {
+				action : 'jjreader_display_full_content',
+				id: feed_item_id,
+
+			},
+			success : function( response ) {
+				// TO DO: refresh the feed display once posts have been fetched
+				console.log(response);
+				if (response == 'error'){
+					$the_content = "Sorry! There was an error loading this post";
+					console.log("error identified");
+
+				} else {
+					console.log("success!");
+					$the_content = response;
+				} 
+				$('#jjreader-full-content').html($the_content);
+				$('#jjreader-full-box').show();
+
+				//Reset the button to its initial state
+				this_button.html(this_button_html);
+			}
+		});
 	}); 
 
 
@@ -354,7 +375,27 @@
 	    
     });
 
+    
 
+    
+
+    /* Close the full screen view */
+       
+    $("#jjreader-full-box, #jjreader-full-close").on("click", function() {
+    	// e = window.event || e; 
+    	//if(this === e.target) {
+        // put your code here
+        	$("#jjreader-full-box").hide();
+    		$("#jjreader-full-content").empty();
+    	//}
+    	
+    });
+
+    // Prevent clicks on the content from triggering click on the background box
+    // 	(This prevents the box from being closed accidentally)
+    $("#jjreader-full-content").on("click", function(e) {
+    	e.stopPropagation();
+    });
 /*
 **
 **   Main functions

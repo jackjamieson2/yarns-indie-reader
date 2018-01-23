@@ -265,6 +265,7 @@ add_shortcode('jjreader_page', 'jjreader_page_shortcode');
 
 // The Following page, visible on the front end
 function jjreader_page(){
+	?> <div id="jjreader"> <?php 
 	if (current_user_can('read')){  // Only logged in users can access this page
 		// Show controls for visitors with permission
 		if(current_user_can( 'edit_pages')){ // Only editors or admins can access the controls to manage subscriptions and refresh the feed
@@ -285,7 +286,15 @@ function jjreader_page(){
 		// SHow the feed for logged in visitors
 		?>
 		<div id = "jjreader-feed-container"></div><!--#jjreader-feed-container-->
-		<button  id="jjreader-load-more">Load more...</button>
+		<button  id="jjreader-load-more">Load more...</button> 
+		<?php 
+		// Add placeholder box for 'full' content 
+		?>
+		<div id="jjreader-full-box" class="jjreader-hidden">
+  			<span id="jjreader-full-close" >&times;</span>
+  			<div id="jjreader-full-content"></div>
+  		</div><!--#jjreader-full-box-->
+ 
 		<?php
 
 
@@ -296,6 +305,7 @@ function jjreader_page(){
 		<div id = "jjreader-feed-error">Sorry, you must be logged in to view this page.</div>
 		<?php
 	}
+	?> </div><!--#jjreader--> <?php
 }
 
 /* Show interface for adding/removing/editing subscriptions */
@@ -478,8 +488,8 @@ function jjreader_display_page($pagenum){
 			if ($item->title !=""){
 				$the_page .= '<a class="jjreader-item-title" href="'.$item->permalink.'">'.$item->title.'</a>';
 			}
-			if (strlen($item->photo)>0){
-				//the feed item has a photo
+			if (strlen($item->photo)>0 && strlen($item->content)>0 ){
+				//the feed item has a photo and content beyond the summary
 				$the_photo = json_decode($item->photo);
 
 
@@ -498,8 +508,8 @@ function jjreader_display_page($pagenum){
 				$the_page .= '</div><!--.jjreader-item-content-->';
 			}
 
-			$the_page .= '<div class="jjreader-item-reponse">'.jjreader_reply_actions($item->posttype,$item->liked,$item->replied,$item->rsvped);
-			$the_page .= '<div class="jjreader-replies">'.$the_replies.'</div></div><!--.jjreader-item-reponse-->';
+			$the_page .= '<div class="jjreader-item-response">'.jjreader_reply_actions($item->posttype,$item->liked,$item->replied,$item->rsvped);
+			$the_page .= '<div class="jjreader-replies">'.$the_replies.'</div></div><!--.jjreader-item-response-->';
 
 			$the_page .= '</div><!--.jjreader-feed-item-->';	
 		}
@@ -512,12 +522,63 @@ function jjreader_display_page($pagenum){
 	}
 	wp_die(); // this is required to terminate immediately and return a proper response
 }
+
+
+/* Returns FULL CONTENT for a single item display */ 
+add_action( 'wp_ajax_jjreader_display_full_content', 'jjreader_display_full_content' );
+function jjreader_display_full_content($id){
+	$id = $_POST['id'];
+
+	global $wpdb;
+
+	$query = "SELECT * FROM ".$wpdb->prefix."jjreader_posts WHERE id = '".$id."'";
+ 
+
+	$item = $wpdb->get_row($query);
+		
+
+	if ( !empty( $item ) ) { 
+		$the_page .= '<div class="jjreader-feed-item" data-id="'.$item->id.'">'; // container for each feed item
+			
+		$the_page .= '<div class="jjreader-item-meta">'; // container for meta 
+		$the_page .= '<a class="jjreader-item-authorname" href="'.$item->siteurl.'">'.$item->sitetitle.'</a> '; // authorname
+		$the_page .= '<a class="jjreader-item-date" href="'.$item->permalink.'">at '.user_datetime($item->published).'</a>'; // date/permalink
+		$the_page .= '<span class="jjreader-item-type">'.$display_type.'</span>'; // display type
+		$the_page .= '</div><!--.jjreader-item-meta-->';
+		if ($item->title !=""){
+			$the_page .= '<a class="jjreader-item-title" href="'.$item->permalink.'">'.$item->title.'</a>';
+		}
+
+		$the_page .='<div class="jjreader-item-content">';
+		$the_page .= $item->content;
+		$the_page .= '</div><!--.jjreader-item-content-->';
+				
+
+		$the_page .= '<div class="jjreader-item-response">'.jjreader_reply_actions($item->posttype,$item->liked,$item->replied,$item->rsvped);
+		$the_page .= '<div class="jjreader-replies">'.$the_replies.'</div></div><!--.jjreader-item-response-->';
+
+		echo $the_page;
+
+		$the_page .= '</div><!--.jjreader-feed-item-->';
+		} else {
+			// something went wrong fetching the item
+			
+			$lastquery = $wpdb->last_query;
+			$lasterror = $wpdb->last_error;
+			jjreader_log("could not fetch post with id = " . $id);
+			jjreader_log($lastquery);
+			jjreader_log($lasterror);
+			echo "error";
+		}	
+
+	wp_die();	
+}
+
  
 /* Add a post to the jjreader_posts table in the database */
 function jjreader_add_feeditem($feedid,$title,$summary,$content,$published=0,$updated=0,$authorname='',$authorurl='',$avurl='',$permalink,$location,$photo,$type,$siteurl,$sitetitle){
 	//jjreader_log("adding post: ".$permalink.": ".$title);
 	global $wpdb;
-
 
 
 	//jjreader_log("published = " . $published);
@@ -557,12 +618,13 @@ function jjreader_add_feeditem($feedid,$title,$summary,$content,$published=0,$up
 		$summary = $content;
 	} 
 	// truncate the summary if it is too long or contains more than one image
-	if (strlen(strip_tags($summary))>500 ) { //|| count($summary->find('img'))>1  
+	if (strlen(strip_tags($summary))>500 || count($photos)>1) { 
 		// since we're truncating, copy summary to content if content is empty
 		if (strlen($content)<1){
 			$content = $summary;
 		}
-		$summary = substr(strip_tags($summary),0,500) . "..."; 
+		//Strip imgs and any tags not listed as allowed below:  ("<a><p><br>"")
+		$summary = substr(strip_tags($summary,"<a><p><br>"),0,500) . "..."; 
 	}
 
 
