@@ -147,10 +147,10 @@
 			},
 			success : function( response ) {
 				// TO DO: refresh the feed display once posts have been fetched
-				console.log(response);
+				//console.log(response);
 				if (response == 'error'){
 					$the_content = "Sorry! There was an error loading this post";
-					console.log("error identified");
+					//console.log("error identified");
 
 				} else {
 					console.log("success!");
@@ -158,6 +158,7 @@
 				} 
 				$('#jjreader-full-content').html($the_content);
 				$('#jjreader-full-box').show();
+				
 
 				//Reset the button to its initial state
 				this_button.html(this_button_html);

@@ -45,11 +45,12 @@ if ( ! class_exists( 'phpUri' ) ) {
 
 
 
-
+ 
 
 global $jjreader_db_version;
-$jjreader_db_version = "1.5"; // Updated database structure
+$jjreader_db_version = "1.6a"; // Updated database structure 
 	//version 1.5 - added tags to 'following' table 
+	// version 1.6 changed table text format to utf8mb4 (to support emojis and special characters)
 
 
 
@@ -128,7 +129,7 @@ function jjreader_create_tables() {
 	$sql = "CREATE TABLE " . $table_log . " (
 		id int NOT NULL AUTO_INCREMENT,
 		date datetime DEFAULT '0000-00-00 00:00:00' NOT NULL,
-		log text DEFAULT '' NOT NULL,
+		log text COLLATE utf8mb4_unicode_ci DEFAULT '' NOT NULL,
 		PRIMARY KEY id (id)
 	);";
 
@@ -143,11 +144,11 @@ function jjreader_create_tables() {
 	$sql = "CREATE TABLE " . $table_following . " (
 		id int NOT NULL AUTO_INCREMENT,
 		added datetime DEFAULT '0000-00-00 00:00:00' NOT NULL,
-		siteurl text DEFAULT '' NOT NULL,
-		feedurl text DEFAULT '' NOT NULL,
-		sitetitle text DEFAULT '' NOT NULL,
-		feedtype text DEFAULT '' NOT NULL,
-		tags text DEFAULT '',
+		siteurl text COLLATE utf8mb4_unicode_ci DEFAULT '' NOT NULL,
+		feedurl text COLLATE utf8mb4_unicode_ci DEFAULT '' NOT NULL,
+		sitetitle text COLLATE utf8mb4_unicode_ci DEFAULT '' NOT NULL,
+		feedtype text COLLATE utf8mb4_unicode_ci DEFAULT '' NOT NULL,
+		tags text COLLATE utf8mb4_unicode_ci DEFAULT '',
 		PRIMARY KEY id (id)
 	);";
 
@@ -162,25 +163,25 @@ function jjreader_create_tables() {
 	$sql = "CREATE TABLE " . $table_posts . " (
 		id int NOT NULL AUTO_INCREMENT,
 		feedid int DEFAULT 0 NOT NULL,
-		sitetitle text DEFAULT '' NOT NULL,
-		siteurl text DEFAULT '' NOT NULL,
-		title text DEFAULT '' ,
-		summary mediumtext DEFAULT '' ,
-		content mediumtext DEFAULT '' NOT NULL,
+		sitetitle text COLLATE utf8mb4_unicode_ci DEFAULT '' NOT NULL,
+		siteurl text COLLATE utf8mb4_unicode_ci DEFAULT '' NOT NULL,
+		title text COLLATE utf8mb4_unicode_ci DEFAULT '' ,
+		summary mediumtext COLLATE utf8mb4_unicode_ci DEFAULT '' ,
+		content mediumtext COLLATE utf8mb4_unicode_ci DEFAULT '' NOT NULL,
 		published datetime DEFAULT '0000-00-00 00:00:00' NOT NULL,
 		updated datetime DEFAULT '0000-00-00 00:00:00' ,
-		authorname text DEFAULT '' NOT NULL,
-		authorurl text DEFAULT '' NOT NULL,
-		authoravurl text DEFAULT '' ,
-		permalink text DEFAULT '' NOT NULL,
-		location text DEFAULT '' ,
-		photo text DEFAULT '' ,
-		posttype text DEFAULT '' NOT NULL,
+		authorname text COLLATE utf8mb4_unicode_ci DEFAULT '' NOT NULL,
+		authorurl text COLLATE utf8mb4_unicode_ci DEFAULT '' NOT NULL,
+		authoravurl text COLLATE utf8mb4_unicode_ci DEFAULT '' ,
+		permalink text COLLATE utf8mb4_unicode_ci DEFAULT '' NOT NULL,
+		location text COLLATE utf8mb4_unicode_ci DEFAULT '' ,
+		photo text COLLATE utf8mb4_unicode_ci DEFAULT '' ,
+		posttype text COLLATE utf8mb4_unicode_ci DEFAULT '' NOT NULL,
 		viewed boolean DEFAULT FALSE NOT NULL,
-		liked text DEFAULT '' ,
-		replied text DEFAULT '' ,
-		reposted text DEFAULT '' ,
-		rsvped text DEFAULT '' ,
+		liked text COLLATE utf8mb4_unicode_ci DEFAULT '' ,
+		replied text COLLATE utf8mb4_unicode_ci DEFAULT '' ,
+		reposted text COLLATE utf8mb4_unicode_ci DEFAULT '' ,
+		rsvped text COLLATE utf8mb4_unicode_ci DEFAULT '' ,
 		PRIMARY KEY id (id)
 	);";
 	
@@ -500,13 +501,14 @@ function jjreader_display_page($pagenum){
 			
 			$the_page .='<div class="jjreader-item-summary">'. $item->summary.'</div><!--.jjreader-item-summary-->'; 
 
-			// Display content if it exists (i.e. it is an expansion of the summary)
+			// Display 'read more' button if there is additional content beyond the summary)
 			if (strlen($item->content)>0 ){
 				$the_page .='<button class="jjreader-item-more">Read more...</button><!--.jjreader-item-more-->'; 
-				$the_page .='<div class="jjreader-item-content jjreader-hidden">';
-				$the_page .= $item->content;
-				$the_page .= '</div><!--.jjreader-item-content-->';
+				//$the_page .='<div class="jjreader-item-content jjreader-hidden">';
+				//$the_page .= $item->content;
+				//$the_page .= '</div><!--.jjreader-item-content-->';
 			}
+			
 
 			$the_page .= '<div class="jjreader-item-response">'.jjreader_reply_actions($item->posttype,$item->liked,$item->replied,$item->rsvped);
 			$the_page .= '<div class="jjreader-replies">'.$the_replies.'</div></div><!--.jjreader-item-response-->';
@@ -623,8 +625,10 @@ function jjreader_add_feeditem($feedid,$title,$summary,$content,$published=0,$up
 		if (strlen($content)<1){
 			$content = $summary;
 		}
-		//Strip imgs and any tags not listed as allowed below:  ("<a><p><br>"")
-		$summary = substr(strip_tags($summary,"<a><p><br>"),0,500) . "..."; 
+		//Strip imgs and any tags not listed as allowed below:  ("<a><p><br>.....")
+		$summary = substr(strip_tags($summary,"<a><p><br><blockquote><b><code><del><em><h1><h2><h3><h4><h5><h6><li><ol><ul><pre><q><strong><sub><u>"),0,500) . "..."; 
+
+	
 	}
 
 
@@ -1280,6 +1284,7 @@ function User_datetime($datetime){
 	$user_datetime = get_date_from_gmt($datetime, $user_datetime_format);
 	return $user_datetime ;
 }
+
 
 
 /*
