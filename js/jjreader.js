@@ -212,7 +212,7 @@
     /*
     * Like buttons
     */
-    $( "body" ).on( "click", ".jjreader-like", function() {
+    $( "body, #jjreader-feed-container" ).on( "click", ".jjreader-like", function() {
     //$(".jjreader-like").on("click", function() {
         console.log('Clicked like button');
 
@@ -382,22 +382,20 @@
     
 
     /* Close the full screen view */
-       
-    $("#jjreader-full-box, #jjreader-full-close").on("click", function() {
-    	// e = window.event || e; 
-    	//if(this === e.target) {
-        // put your code here
-        	$("#jjreader-full-box").hide();
-    		$("#jjreader-full-content").empty();
-    	//}
-    	
-    });
+  
 
-    // Prevent clicks on the content from triggering click on the background box
-    // 	(This prevents the box from being closed accidentally)
-    $("#jjreader-full-content").on("click", function(e) {
-    	e.stopPropagation();
-    });
+	$(document.body)
+		.on('click touchend','#jjreader-full-content', function(e){
+			//Click inside the content div, do nothing
+			return false;
+    	})
+          .on('click touchend','#jjreader-full-box, #jjreader-full-close', function(e){
+          	//Click on the close button or background container, close the full screen view
+			$("#jjreader-full-box").hide();
+    		$("#jjreader-full-content").empty();
+	});
+    
+
 /*
 **
 **   Main functions
