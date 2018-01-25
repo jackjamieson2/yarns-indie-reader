@@ -26,6 +26,9 @@
  		$('#jjreader-feed-container').html("Checking for new posts...");
  		disable_button($(this));
  		jjreader_show_loading($('#jjreader-feed-container'));
+ 		$('#jjreader-subscriptions').hide(); // Hide the subscription manager
+		$('#jjreader-feed-container').show(); // Show the feed
+		$('#jjreader-load-more').show(); // Show the load more button for the feed
 
         $.ajax({
 				url : jjreader_ajax.ajax_url,
@@ -174,31 +177,37 @@
     
     // First, show the reply text when user clicks 'reply'
     $( "body" ).on( "click", ".jjreader-reply", function() {
-
-    //$(".jjreader-reply").on("click", function() {
-    	console.log('Clicked reply button');
-
-    	$(this).parents('.jjreader-feed-item').find('.jjreader-reply-input').show();
+        if ($(this).data('link')){
+        	// If a reply already exists, open it in a new tab
+        	openInNewTab($(this).data('link'));
+        } else {
+    		$(this).parents('.jjreader-feed-item').find('.jjreader-reply-input').show();
+    	}
     }); 
     
     // Second, create reply post when user clicks 'Submit'
-    $( "body" ).on( "click", ".jjreader-reply-submit", function() {
-    //$(".jjreader-reply-submit").on("click", function() {
-        console.log('Clicked submit button');
+    $( "body, #jjreader-feed-container" ).on( "click", ".jjreader-reply-submit", function() {
+    	// Create a reply with the entered text
+        disable_button($(this));
+        jjreader_show_loading($(this));
+
         reply_to = $(this).parents('.jjreader-feed-item').find('.jjreader-item-date').attr('href'); 
         reply_to_title = $(this).parents('.jjreader-feed-item').find('.jjreader-item-title').text();
         reply_to_content = $(this).parents('.jjreader-feed-item').find('.jjreader-item-content').html();
-        
-        title = $(this).parents('.jjreader-feed-item').find('.jjreader-reply-title').val();
-        content = $(this).parents('.jjreader-feed-item').find('.jjreader-reply-text').val();
-        feed_item_id = $(this).parents('.jjreader-feed-item').data('id');
 
-        type= "reply";
+        feed_item_id = $(this).parents('.jjreader-feed-item').data('id');
+	    this_response_button = $('*[data-id="'+feed_item_id+'"]').find($('.jjreader-reply'))
+
+	    title = $(this).parents('.jjreader-feed-item').find('.jjreader-reply-title').val();
+        content = $(this).parents('.jjreader-feed-item').find('.jjreader-reply-text').val();
+
+        type = "reply";
         status = "draft";
-        jjreader_post(reply_to, reply_to_title, reply_to_content, type, status, title, content,feed_item_id, function(response){
-        	// This should return the post id as response
-        });	
+	        
+        jjreader_post(reply_to, reply_to_title, reply_to_content, type, status,title,content,this_response_button);
     });
+
+
     
     // Third, when user clicks 'Full editor', create a draft of the post, then open 
     // the full post editor in a new tab
@@ -213,13 +222,10 @@
     * Like buttons
     */
     $( "body, #jjreader-feed-container" ).on( "click", ".jjreader-like", function() {
-    //$(".jjreader-like").on("click", function() {
-        console.log('Clicked like button');
 
         if ($(this).data('link')){
         	// If a like already exists, open it in a new tab
         	openInNewTab($(this).data('link'));
-        	console.log($(this).data('link'));
         } else {
 	        // If this feed item has not been liked, add a like to the blog
 
@@ -474,6 +480,7 @@
        
        */
 	function jjreader_post(reply_to, reply_to_title, reply_to_content, type, status, title, content,this_response_button) {
+		console.log("Posting response: \n Type: " + type + "\n Content: " + content);
 		 $.ajax({
 				url : jjreader_ajax.ajax_url,
 				type : 'post',
@@ -501,6 +508,11 @@
 					this_response_button.html('');
 					this_response_button.addClass('jjreader-response-exists');
 					this_response_button.attr('data-link',response);
+
+					//For replies, hide the reply editor upon success
+					if (this_response_button.hasClass("jjreader-reply")){
+						this_response_button.parent($('.jjreader-feed-item')).find($('.jjreader-reply-input')).hide();
+					}
 /*
 					if (type == 'like'){
 						console.log ('like');

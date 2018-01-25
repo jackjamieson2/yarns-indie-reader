@@ -32,7 +32,16 @@
 	pointer-events:none;
 }
 
+/* The 'Load more' button at the bottom of the feed */
+#jjreader-load-more {
+	margin: 1rem auto; 
+}
 
+#jjreader-last-updated {
+	font-size:small;
+	color:#888;
+	padding: 0 0.5em;
+}
 /*
 ** Posts displayed in the feed
 */
@@ -84,18 +93,29 @@
   max-height:100%;
 }
 
-
-.jjreader-feed-item .jjreader-response-controls{
-	display:inline-block;
-	width:50%;
+.jjreader-feed-item .jjreader-item-more {
+    display: block;
+    font-weight: bold;
+    text-decoration: underline;
+    cursor: pointer;
 }
+
+.jjreader-feed-item .jjreader-response-controls {
+	text-align:right;}
+
+.jjreader-feed-item .jjreader-response-controls button{
+	margin-left:1em;
+}
+
 
 .jjreader-feed-item  .jjreader-like::before {
 	content:"Like";
 }
 
 .jjreader-feed-item  .jjreader-like.jjreader-response-exists::before {
-	content:"Liked";
+	content:"See like: 🔗";
+
+
 }
 
 .jjreader-feed-item  .jjreader-reply::before {
@@ -103,7 +123,7 @@
 }
 
 .jjreader-feed-item  .jjreader-reply.jjreader-response-exists::before {
-	content:"Replied";
+	content:"See reply: 🔗";
 }
 
 .jjreader-feed-item  .jjreader-replies:empty{

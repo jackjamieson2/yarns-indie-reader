@@ -111,7 +111,7 @@ function jjreader_install() {
 
 	//Set up cron job to check for posts
 	if ( !wp_next_scheduled( 'jjreader_generate_hook' ) ) {            
-		wp_schedule_event( time(), 'twentymins', 'jjreader_generate_hook' );
+		wp_schedule_event( time(), 'sixtymins', 'jjreader_generate_hook' );
 	}
 	//Flush rewrite rules - see: https://codex.wordpress.org/Function_Reference/flush_rewrite_rules
 	flush_rewrite_rules( false );
@@ -236,9 +236,10 @@ function create_following_page(){
 
 
 /*
-** Defines the interval for the cron job (5 minutes) 
+** Defines the interval for the cron job (60 minutes) 
 */
 function jjreader_cron_definer($schedules){
+	/*
 	$schedules['fivemins'] = array(
 		'interval'=> 300,
 		'display'=>  __('Once Every 5 Minutes')
@@ -246,7 +247,13 @@ function jjreader_cron_definer($schedules){
 
 	$schedules['twentymins'] = array(
 		'interval'=> 1200,
-		'display'=>  __('Once Every 5 Minutes')
+		'display'=>  __('Once Every 20 Minutes')
+	);
+	*/
+
+	$schedules['sixtymins'] = array(
+		'interval'=> 3600,
+		'display'=>  __('Once Every 60 Minutes')
 	);
 	return $schedules;
 }
@@ -272,9 +279,11 @@ function jjreader_page(){
 		if(current_user_can( 'edit_pages')){ // Only editors or admins can access the controls to manage subscriptions and refresh the feed
 			?>
 			<div class="jjreader-controls">
-				<button id="jjreader-button-refresh" >Update feed</button> 
+				
 				<button id="jjreader-button-feed">View feed</button>
 				<button id="jjreader-button-subscriptions" >Manage subscriptions</button>
+				<button id="jjreader-button-refresh" >Update feed</button> 
+				<span id="jjreader-last-updated">Feed last refreshed: <time> <?php echo user_datetime(get_option('jjreader_last_updated'));?></time></span>
 			</div><!--.jjreader-controls-->
 
 			<?php jjreader_subscription_editor(); ?>
@@ -287,6 +296,8 @@ function jjreader_page(){
 		// SHow the feed for logged in visitors
 		?>
 		<div id = "jjreader-feed-container"></div><!--#jjreader-feed-container-->
+
+
 		<button  id="jjreader-load-more">Load more...</button> 
 		<?php 
 		// Add placeholder box for 'full' content 
@@ -462,7 +473,7 @@ function jjreader_display_page($pagenum){
 	if ( !empty( $items ) ) { 
 		//$the_page = '<div class="jjreader-page-'.$pagenum.'">';
 		$the_page = '<div class="jjreader-test">';
-		$the_page = "Page ". $pagenum ;
+		//$the_page = "Page ". $pagenum ;
 		foreach ( $items as $item ) {
 			if ($item->posttype=="h-event"){
 				$display_type = "Event";
@@ -499,15 +510,18 @@ function jjreader_display_page($pagenum){
 				$the_page .='</div>';
 			}
 			
-			$the_page .='<div class="jjreader-item-summary">'. $item->summary.'</div><!--.jjreader-item-summary-->'; 
-
+			$the_page .='<div class="jjreader-item-summary">'. $item->summary;
 			// Display 'read more' button if there is additional content beyond the summary)
 			if (strlen($item->content)>0 ){
-				$the_page .='<button class="jjreader-item-more">Read more...</button><!--.jjreader-item-more-->'; 
+				$the_page .='<a class="jjreader-item-more">See more...</button><!--.jjreader-item-more-->'; 
 				//$the_page .='<div class="jjreader-item-content jjreader-hidden">';
 				//$the_page .= $item->content;
 				//$the_page .= '</div><!--.jjreader-item-content-->';
 			}
+
+			$the_page .='</div><!--.jjreader-item-summary-->'; 
+
+			
 			
 
 			$the_page .= '<div class="jjreader-item-response">'.jjreader_reply_actions($item->posttype,$item->liked,$item->replied,$item->rsvped);
@@ -593,6 +607,7 @@ function jjreader_add_feeditem($feedid,$title,$summary,$content,$published=0,$up
 	$updated = date('Y-m-d H:i:s',$updated);
 
 
+
 	// If there is no featured photo defined, search for a first image in the content
 		// For now set photo to "" and ignore any h-feed photo
 	//$photo = "";
@@ -603,16 +618,6 @@ function jjreader_add_feeditem($feedid,$title,$summary,$content,$published=0,$up
 	}
 
 	if (count($photos) > 0){$photo = json_encode($photos[0]);}
-
-
-	//for debugging only
-	$temp_log ='';
-	foreach ($photos as $item) {
-		$temp_log .= $item . "\n";
-	}
-	jjreader_log($temp_log);
-	
-
 
 
 	// if there is no summary, copy the content to the summary
@@ -679,7 +684,7 @@ function jjreader_add_feeditem($feedid,$title,$summary,$content,$published=0,$up
 			jjreader_log("added ".$permalink.": ".$title);
 		}
 	}else{
-		jjreader_log("post already exists: " .$permalink.": ".$title);
+		//jjreader_log("post already exists: " .$permalink.": ".$title);
 	}	
 
 }
@@ -689,7 +694,6 @@ function jjreader_add_feeditem($feedid,$title,$summary,$content,$published=0,$up
 */ 
 add_action( 'wp_ajax_jjreader_new_subscription', 'jjreader_new_subscription' );
 function jjreader_new_subscription($siteurl, $feedurl, $sitetitle, $feedtype){
-	//jjreader_log("adding a new subscription");
 	$siteurl = $_POST['siteurl'];
 	$feedurl = $_POST['feedurl'];
 	$sitetitle = $_POST['sitetitle'];
@@ -799,7 +803,7 @@ function jjreader_response ($response_type, $in_reply_to, $reply_to_title, $repl
 	}
 	
 	echo get_permalink($the_post_id);
-	wp_die(""); // this is required to terminate immediately and return a proper response
+	wp_die(); // this is required to terminate immediately and return a proper response
 }
 
 
@@ -990,6 +994,11 @@ function jjreader_aggregator() {
 		}
 		remove_filter( 'wp_feed_cache_transient_lifetime', 'jjreader_feed_time' );
 	}
+	// Store the time of the this update
+	$update_time = date('Y-m-d H:i:s', time());
+	jjreader_log("Aggregator finished at ". $update_time);
+	update_option( 'jjreader_last_updated', $update_time);
+
 	wp_die(); // this is required to terminate immediately and return a proper response
 }
 
@@ -1037,16 +1046,13 @@ function jjreader_fetch_hfeed($url,$feedtype) {
 	foreach ($mf['items'] as $mf_item) {
 		if ($hfeed == "") {
 			if ("{$mf_item['type'][0]}"=="h-feed"){
-				$hfeed = $mf_item;	
-				//jjreader_log("h-feed found: 1");
-			
+				$hfeed = $mf_item;				
 			} else {
 				//If h-feed has not been found, check for a child-level h-feed
 				foreach($mf_item['children'] as $child){
 					if ($hfeed == "") {
 						if ("{$child['type'][0]}"=="h-feed"){
 							$hfeed = $child;	
-							//jjreader_log("h-feed found: 2");			
 						}
 					}
 				}
@@ -1059,14 +1065,12 @@ function jjreader_fetch_hfeed($url,$feedtype) {
 			if ("{$mf_item['type'][0]}"=="h-entry"){
 				$hfeed = $mf;		
 				$hfeed_path	="items";
-				//jjreader_log("h-feed found: 3");
 			} else {
 				//If h-entries have not been found, check for a child-level h-entry
 				foreach($mf_item['children'] as $child){
 					if ($hfeed == "") {
 						if ("{$child['type'][0]}"=="h-entry"){
 							$hfeed = $mf_item;		
-							//jjreader_log("h-feed found: 4");		
 						}
 					}
 				}
@@ -1151,7 +1155,7 @@ $counter ++;
 			}
 
 			// Log the parsed h-feed  for debugging
-			jjreader_log($log_entry);
+			//jjreader_log($log_entry);
 
 
 			//Remove the title if it is equal to the post content (e.g. asides, notes, microblogs)
@@ -1197,17 +1201,17 @@ $counter ++;
 
 
 function findPhotos($html){
-	jjreader_log("Finding photos...");
+	//jjreader_log("Finding photos...");
 	$dom = new DOMDocument;
 	$dom->loadHTML($html);
 	foreach ($dom->getElementsByTagName('img') as $node) {
 		$src= $node->getAttribute( 'src' );
 		$alt = $node->getAttribute( 'alt' );
-		jjreader_log("src = ." . $src . " | alt = " . $alt);
+		//jjreader_log("src = ." . $src . " | alt = " . $alt);
 		$returnArray[] = array("src"=>$src, "alt"=>$alt);		
 	}
 	return $returnArray;
-	jjreader_log(serialize($returnArray));
+	//jjreader_log(serialize($returnArray));
 } 
 
 //Log changes to the database (adding sites, fetching posts, etc.)
