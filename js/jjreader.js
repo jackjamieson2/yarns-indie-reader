@@ -158,6 +158,7 @@
 				} 
 				$('#jjreader-full-content').html($the_content);
 				$('#jjreader-full-box').show();
+				$('#jjreader-full-box').scrollTop(0);
 				
 
 				//Reset the button to its initial state
