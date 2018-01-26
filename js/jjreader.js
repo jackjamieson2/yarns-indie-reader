@@ -18,6 +18,11 @@
     jjreader_show_loading($('#jjreader-feed-container'));
     jjreader_showpage(pagenum);
     jjreader_showsubscriptions();
+    jjreader_showrefreshtime();
+
+
+
+
 
 	 // The refresh button
     $("#jjreader-button-refresh").on("click", function() {
@@ -39,6 +44,7 @@
 				success : function( response ) {
 					pagenum =0;
 					jjreader_showpage();
+					jjreader_showrefreshtime();
 					enable_button($("#jjreader-button-refresh"));
 					// TO DO: refresh the feed display once posts have been fetched
 					console.log("finished refreshing posts");
@@ -472,6 +478,19 @@
 	    } 
     }
 
+    /* Load the "last refreshed" timestamp  */
+    function jjreader_showrefreshtime() {	    
+    	 $.ajax({
+			url : jjreader_ajax.ajax_url,
+			type : 'post',
+			data : {
+				action : 'jjreader_get_lastupdated'
+			},
+			success : function( response ) {
+				$('#jjreader-last-updated').html(response);
+			}
+		});
+    }
 
 
       // Generic post creator

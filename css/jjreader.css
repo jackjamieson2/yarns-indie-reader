@@ -42,6 +42,15 @@
 	color:#888;
 	padding: 0 0.5em;
 }
+
+#jjreader-last-updated:empty{
+	display:none;
+}
+#jjreader-last-updated::before {
+	content:"Feed last refreshed: ";
+}
+
+
 /*
 ** Posts displayed in the feed
 */
@@ -126,12 +135,6 @@
 	content:"See reply: 🔗";
 }
 
-.jjreader-feed-item  .jjreader-replies:empty{
-	display:none;
-}
-.jjreader-feed-item  .jjreader-replies::before {
-	content:"Your responses:";
-}
 
 
 .jjreader-feed-item  .jjreader-replies {

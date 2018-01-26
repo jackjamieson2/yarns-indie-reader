@@ -283,7 +283,7 @@ function jjreader_page(){
 				<button id="jjreader-button-feed">View feed</button>
 				<button id="jjreader-button-subscriptions" >Manage subscriptions</button>
 				<button id="jjreader-button-refresh" >Update feed</button> 
-				<span id="jjreader-last-updated">Feed last refreshed: <time> <?php echo user_datetime(get_option('jjreader_last_updated'));?></time></span>
+				<time id="jjreader-last-updated"></time>
 			</div><!--.jjreader-controls-->
 
 			<?php jjreader_subscription_editor(); ?>
@@ -383,6 +383,13 @@ function jjreader_subscription_list(){
 	echo $subscriptions_list;
 	wp_die();
 }
+
+add_action( 'wp_ajax_jjreader_get_lastupdated', 'jjreader_get_lastupdated' );
+function jjreader_get_lastupdated(){
+	echo user_datetime(get_option('jjreader_last_updated'));
+	wp_die();
+}
+
 
 
 /* Return html for reply actions if the user has permission to create posts */
