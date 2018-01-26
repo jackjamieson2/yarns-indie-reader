@@ -24,11 +24,18 @@
 ?>
 
 
-
+<div id = "jjreader-admin">
 <div class="wrap">
     <?php    
-    	echo "<h2>" . __( 'JJ Reader Settings', 'jjreader_feedlocation' ) . "</h2>"; 
+    	echo "<h2> JJ Reader Settings </h2>"; 
     ?>
+    <div>
+        <p>Thank you for installing JJ Reader!<p>
+        <p><strong>Getting started:</strong> To use JJ Reader, create a page with the content "[jjreader_page]" (no quotation marks). <br>
+            When you view that page, you will see the reader interface.  From there you can subscribe to blogs and websites, and post replies.<p>
+
+
+    </div>
     <div> <strong>Database version: </strong>  <?php echo get_option( "jjreader_db_version" ); ?></div>
 
     
@@ -77,3 +84,5 @@
 ?>
 
 </div>
+
+</div><!--#jjreader-admin-->

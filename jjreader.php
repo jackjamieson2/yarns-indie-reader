@@ -1,9 +1,10 @@
 <?php
 /**
- * Plugin Name: Jack Jamieson reader
+ * Plugin Name: JJ Reader
  * Plugin URI: jackjamieson.net
- * Description: This is the beginning of my reader plugin.  
- * Version: 0.0
+ * Description: JJ Reader is a feed reader. You can subscribe to blogs and websites, view their updates in a feed, then post likes and replies directly to your WordPress site. Replies and likes are marked-up with microformats 2, so posts created with this plugin will support webmentions. 
+
+ * Version: 0.1
  * Author: Jack Jamieson
  * Author URI: http://jackjamieson.net
  * Text Domain: jjreader
@@ -48,9 +49,10 @@ if ( ! class_exists( 'phpUri' ) ) {
  
 
 global $jjreader_db_version;
-$jjreader_db_version = "1.6a"; // Updated database structure 
+$jjreader_db_version = "1.7"; // Updated database structure 
 	//version 1.5 - added tags to 'following' table 
 	// version 1.6 changed table text format to utf8mb4 (to support emojis and special characters)
+	// version 1.7 add syndication and in_reply_to properties to feed  items
 
 
 
@@ -83,6 +85,7 @@ add_action('admin_menu', 'jjreader_admin_actions');
 
 
 /* Display an admin notice to configure the plugin when newly installed */
+/*
 function initial_setup_admin_notice() {
     ?>
     <div class="notice notice-info is-dismissible">
@@ -90,6 +93,7 @@ function initial_setup_admin_notice() {
     </div>
     <?php
 }
+*/
 	
 
 /*
@@ -182,8 +186,13 @@ function jjreader_create_tables() {
 		replied text COLLATE utf8mb4_unicode_ci DEFAULT '' ,
 		reposted text COLLATE utf8mb4_unicode_ci DEFAULT '' ,
 		rsvped text COLLATE utf8mb4_unicode_ci DEFAULT '' ,
+		syndication text COLLATE utf8mb4_unicode_ci DEFAULT '' ,
+		in_reply_to text COLLATE utf8mb4_unicode_ci DEFAULT '' ,
+
 		PRIMARY KEY id (id)
 	);";
+
+	
 	
 	require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
 	dbDelta($sql);
@@ -502,25 +511,33 @@ function jjreader_display_page($pagenum){
 			$the_page .= '<div class="jjreader-item-meta">'; // container for meta 
 			$the_page .= '<a class="jjreader-item-authorname" href="'.$item->siteurl.'">'.$item->sitetitle.'</a> '; // authorname
 			$the_page .= '<a class="jjreader-item-date" href="'.$item->permalink.'">at '.user_datetime($item->published).'</a>'; // date/permalink
-			$the_page .= '<span class="jjreader-item-type">'.$display_type.'</span>'; // display type
+			//$the_page .= '<span class="jjreader-item-type">'.$display_type.'</span>'; // display type
+			
 			$the_page .= '</div><!--.jjreader-item-meta-->';
 			if ($item->title !=""){
 				$the_page .= '<a class="jjreader-item-title" href="'.$item->permalink.'">'.$item->title.'</a>';
 			}
-			if (strlen($item->photo)>0 && strlen($item->content)>0 ){
-				//the feed item has a photo and content beyond the summary
-				$the_photo = json_decode($item->photo);
-
-
-				$the_page .='<div class="jjreader-item-photo">';
-				$the_page .='<img src="'.$the_photo->src.'" alt="'.$the_photo->alt.'">';
-				$the_page .='</div>';
+			if (strlen($item->photo)>0 ){
+				//the feed item has a photo
+				
+				if (strpos($summary,$item->photo)===false){
+					// Only display the photo if it is not already in the summary
+					$the_page .='<div class="jjreader-item-photo">';
+					$the_page .='<img src="'.$item->photo.'">';
+					$the_page .='</div>';
+				}
+				
 			}
 			
-			$the_page .='<div class="jjreader-item-summary">'. $item->summary;
+			$the_page .='<div class="jjreader-item-summary">';
+			if (strlen($item->in_reply_to)>0){
+				$the_page .= '<div class="jjreader-item-reply">reply to post at <a href = "'.$item->in_reply_to.'">'.parse_url($item->in_reply_to,PHP_URL_HOST).'</a></div>';
+			}
+			$the_page .= $item->summary;
+
 			// Display 'read more' button if there is additional content beyond the summary)
 			if (strlen($item->content)>0 ){
-				$the_page .='<a class="jjreader-item-more">See more...</button><!--.jjreader-item-more-->'; 
+				$the_page .='<a class="jjreader-item-more">See more...</a><!--.jjreader-item-more-->'; 
 				//$the_page .='<div class="jjreader-item-content jjreader-hidden">';
 				//$the_page .= $item->content;
 				//$the_page .= '</div><!--.jjreader-item-content-->';
@@ -528,11 +545,27 @@ function jjreader_display_page($pagenum){
 
 			$the_page .='</div><!--.jjreader-item-summary-->'; 
 
-			
+			$the_page .= '<div class="jjreader-item-meta2">'; // container for meta2
+			if (strlen($item->location)>0){
+				$the_page .= '<div class="jjreader-item-location">'.$item->location.'</div>'; // display type
+			}
+
+			if (strlen($item->syndication)>0){
+				$syndication_items = json_decode($item->syndication);
+				$the_page .= '<div class="jjreader-item-syndication">';
+				foreach($syndication_items as $item){
+
+					$the_page .= '<a href ="'.$item.'">'.parse_url($item,PHP_URL_HOST) .'</span>';
+				}
+				$the_page .= '</div>';
+			}
+
+			$the_page .= '</div><!--.jjreader-item-meta2-->';
+
 			
 
 			$the_page .= '<div class="jjreader-item-response">'.jjreader_reply_actions($item->posttype,$item->liked,$item->replied,$item->rsvped);
-			$the_page .= '<div class="jjreader-replies">'.$the_replies.'</div></div><!--.jjreader-item-response-->';
+			$the_page .= '</div><!--.jjreader-item-response-->';
 
 			$the_page .= '</div><!--.jjreader-feed-item-->';	
 		}
@@ -573,12 +606,31 @@ function jjreader_display_full_content($id){
 		}
 
 		$the_page .='<div class="jjreader-item-content">';
+		if (strlen($item->in_reply_to)>0){
+				$the_page .= '<div class="jjreader-item-reply">reply to post at <a href = "'.$item->in_reply_to.'">'.parse_url($item->in_reply_to,PHP_URL_HOST).'</a></div>';
+
+			}
 		$the_page .= $item->content;
 		$the_page .= '</div><!--.jjreader-item-content-->';
-				
+		
+		$the_page .= '<div class="jjreader-item-meta2">'; // container for meta2
+		if (strlen($item->location)>0){
+			$the_page .= '<div class="jjreader-item-location">'.$item->location.'</div>'; // display type
+		}
+
+		if (strlen($item->syndication)>0){
+			$syndication_items = json_decode($item->syndication);
+			$the_page .= '<div class="jjreader-item-syndication">';
+			foreach($syndication_items as $item){
+
+				$the_page .= '<a href ="'.$item.'">'.parse_url($item,PHP_URL_HOST) .'</span>';
+			}
+			$the_page .= '</div>';
+		}
+
+		$the_page .= '</div><!--.jjreader-item-meta2-->';		
 
 		$the_page .= '<div class="jjreader-item-response">'.jjreader_reply_actions($item->posttype,$item->liked,$item->replied,$item->rsvped);
-		$the_page .= '<div class="jjreader-replies">'.$the_replies.'</div></div><!--.jjreader-item-response-->';
 
 		echo $the_page;
 
@@ -599,7 +651,8 @@ function jjreader_display_full_content($id){
 
  
 /* Add a post to the jjreader_posts table in the database */
-function jjreader_add_feeditem($feedid,$title,$summary,$content,$published=0,$updated=0,$authorname='',$authorurl='',$avurl='',$permalink,$location,$photo,$type,$siteurl,$sitetitle){
+function jjreader_add_feeditem($feedid,$title,$summary,$content,$published=0,$updated=0,$authorname='',$authorurl='',$avurl='',$permalink,$location,$photo,$type,$siteurl,$sitetitle,$syndication='',$in_reply_to=''){
+
 	//jjreader_log("adding post: ".$permalink.": ".$title);
 	global $wpdb;
 
@@ -616,15 +669,21 @@ function jjreader_add_feeditem($feedid,$title,$summary,$content,$published=0,$up
 
 
 	// If there is no featured photo defined, search for a first image in the content
-		// For now set photo to "" and ignore any h-feed photo
-	//$photo = "";
-	$photos = findPhotos($content);
+	if ($photo == ''){
+		$photos = findPhotos($content);	
 
-	if (count($photos)<1){
-		$photos = findPhotos($summary);
-	}
+		if (count($photos)<1){
+			$photos = findPhotos($summary);
+		}
+		if (count($photos) > 0){
+			$photo = $photos[0];
+		}
+	} 
+	
 
-	if (count($photos) > 0){$photo = json_encode($photos[0]);}
+	
+
+	
 
 
 	// if there is no summary, copy the content to the summary
@@ -639,8 +698,6 @@ function jjreader_add_feeditem($feedid,$title,$summary,$content,$published=0,$up
 		}
 		//Strip imgs and any tags not listed as allowed below:  ("<a><p><br>.....")
 		$summary = substr(strip_tags($summary,"<a><p><br><blockquote><b><code><del><em><h1><h2><h3><h4><h5><h6><li><ol><ul><pre><q><strong><sub><u>"),0,500) . "..."; 
-
-	
 	}
 
 
@@ -649,6 +706,7 @@ function jjreader_add_feeditem($feedid,$title,$summary,$content,$published=0,$up
 	if ($summary == $content){
 		$content = "";
 	}
+
 
 	
 
@@ -673,6 +731,8 @@ function jjreader_add_feeditem($feedid,$title,$summary,$content,$published=0,$up
 				'authoravurl' => $avurl,
 				'permalink' => $permalink,
 				'location'=> $location,
+				'syndication'=> $syndication,
+				'in_reply_to'=> $in_reply_to,
 				'photo'=> $photo,
 				'posttype' => $type,
 				'viewed' =>false,
@@ -957,7 +1017,7 @@ function jjreader_aggregator() {
 				$avurl='';
 				$permalink=$item->get_permalink();
 				$location='';
-				$photo="";
+				$photo='';
 				$type='rss';
 				try{
 					jjreader_add_feeditem($feedid,$title,$summary,$content,$published,$updated,$authorname,$authorurl,$avurl,$permalink,$location,$photo,$type,$siteurl,$sitetitle);
@@ -980,9 +1040,10 @@ function jjreader_aggregator() {
 				$authorurl = ""; // none for now — TO DO: Fetch avatar from h-card if possible, or just use siteurl
 				$avurl = ""; // none for now — TO DO: Fetch avatar from h-card if possible
 				$permalink = $item['url'];
-				$location='';
-				
-				$photo='';
+				$location=$item['location'];
+				$photo=$item['photo'];
+				$syndication = $item['syndication'];
+				$in_reply_to = $item['in-reply-to'];
 				//$location = $item['location'];
 				
 				$siteurl=$item['siteurl'];
@@ -991,7 +1052,7 @@ function jjreader_aggregator() {
 				
 
 				try{
-					jjreader_add_feeditem($feedid,$title,$summary,$content,$published,$updated,$authorname,$authorurl,$avurl,$permalink,$location,$photo,$type,$siteurl,$sitetitle);
+					jjreader_add_feeditem($feedid,$title,$summary,$content,$published,$updated,$authorname,$authorurl,$avurl,$permalink,$location,$photo,$type,$siteurl,$sitetitle,$syndication,$in_reply_to);
 					//jjreader_add_feeditem($permalink, $title, $content, $authorname, $authorurl, $time, $avurl, $siteurl, $feedurl, $type);
 				}catch(Exception $e){
 					jjreader_log("Exception occured: ".$e->getMessage());
@@ -1098,41 +1159,28 @@ function jjreader_fetch_hfeed($url,$feedtype) {
 			if ("{$item['type'][0]}" == 'h-entry' ||
 				"{$item['type'][0]}" == 'h-event' )
 			{
-				// Only parse supported types (h-entry, h-event... more to come)
-
-$counter ++;
-			//jjreader_log("parsing h-feed item #".$counter.": "."{$item['properties']['name'][0]}");
+			// Only parse supported types (h-entry, h-event... more to come)
+			
 			$item_name = "{$item['properties']['name'][0]}";
 			$item_type = "{$item['type'][0]}";
 			$item_summary = "{$item['properties']['summary'][0]}";
 			$item_published = strtotime("{$item['properties']['published'][0]}");
-			//jjreader_log("published date = " .$item_published);
-			//gmdate('d.m.Y H:i:s',strtotime($datetime)));
-			//$item_published = UTC_datetime($item_published);
 			$item_updated = strtotime("{$item['properties']['updated'][0]}");
-			//$item_updated = UTC_datetime($item_updated);
-			$item_location = json_encode("{$item['properties']['location'][0]}");
-				//Note that location can be an h-card
+			$item_location = "{$item['properties']['location'][0]['value']}";
+				//Note that location can be an h-card, but this script just gets the string value
 			$item_url = "{$item['properties']['url'][0]}";
 			$item_uid = "{$item['properties']['uid'][0]}";
-			$item_syndication = json_encode("{$item['properties']['syndication'][0]}");
+			if ("{$item['properties']['syndication']}"){
+				$syndication =  array();
+				foreach ($item['properties']['syndication'] as $syndication_item) {
+					$syndication[] = $syndication_item;		
+				}
+				$item_syndication = json_encode($syndication);
+			}
+			//$item_syndication = json_encode("{$item['properties']['syndication']}");
+			$item_photo = "{$item['properties']['photo'][0]}";
 			$item_inreplyto = "{$item['properties']['in-reply-to'][0]}";
 			$item_author = "{$item['properties']['author'][0]}";
-
-				$log_entry = "<ol><li>item_name = ". $item_name ."</li>";
-				$log_entry .= "<li>item_type = ". $item_type ."</li>";
-				$log_entry .= "<li>item_summary = ". $item_summary ."</li>";
-				$log_entry .= "<li>item_published = ". $item_published ."</li>";
-				$log_entry .= "<li>item_updated = ". $item_updated ."</li>";
-				$log_entry .= "<li>item_location = ". $item_location ."</li>";
-				$log_entry .= "<li>item_url = ". $item_url ."</li>";
-				$log_entry .= "<li>item_uid = ". $item_uid ."</li>";
-				$log_entry .= "<li>item_syndication = ". $item_syndication ."</li>";
-				$log_entry .= "<li>item_inreplyto = ". $item_inreplyto ."</li>";
-				$log_entry .= "<li>item_author = ". $item_author ."</li>";
-
-
-
 
 			//handle h-entry
 			if ("{$item['type'][0]}" == "h-entry"){
@@ -1141,10 +1189,8 @@ $counter ++;
 				$item_content = "{$item['properties']['content'][0]['html']}";
 				$item_content_plain = "{$item['properties']['content'][0]['value']}";
 
-
 				$log_entry .= "<li>item_content = ". $item_content ."</li>";
 				$log_entry .= "<li>item_content_plain = ". $item_content_plain ."</li>";
-
 			}
 
 			//handle h-event
@@ -1174,6 +1220,7 @@ $counter ++;
 				"summary"=>$item_summary,
 				"content"=>$item_content,
 				"location"=>$item_location,
+				"photo"=>$item_photo,
 				"published" =>$item_published,
 				"updated" =>$item_updated,
 				"url"=>$item_url,
@@ -1212,10 +1259,13 @@ function findPhotos($html){
 	$dom = new DOMDocument;
 	$dom->loadHTML($html);
 	foreach ($dom->getElementsByTagName('img') as $node) {
-		$src= $node->getAttribute( 'src' );
+		/*$src= $node->getAttribute( 'src' );
 		$alt = $node->getAttribute( 'alt' );
 		//jjreader_log("src = ." . $src . " | alt = " . $alt);
 		$returnArray[] = array("src"=>$src, "alt"=>$alt);		
+		*/
+		// SImplying to just return url for image
+		$returnArray[] = $node->getAttribute('src');
 	}
 	return $returnArray;
 	//jjreader_log(serialize($returnArray));
@@ -1333,6 +1383,8 @@ register_deactivation_hook( __FILE__, 'jjreader_deactivate' );
 add_action( 'plugins_loaded', 'jjreader_update_db_check' );
 
 /* Hook to display admin notice */ 
+/*
 add_action( 'admin_notices', 'initial_setup_admin_notice' );
+*/
 	
 ?>

@@ -12,6 +12,10 @@
 */
 
 
+	// Only run this script if we're on the jjreader page!
+
+	if ($('#jjreader').length > 0 ){
+
 
     var pagenum =0; // Start at page 1
     //Load page 1 upon initial load
@@ -639,5 +643,6 @@
 
 
     
-
+	} // End if (checking if #jjreader exists) 
+	
 })(jQuery);
