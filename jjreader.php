@@ -526,14 +526,25 @@ function jjreader_display_page($pagenum){
 			if ($item->title !=""){
 				$the_page .= '<a class="jjreader-item-title" href="'.$item->permalink.'">'.$item->title.'</a>';
 			}
+
+			$tidy = new tidy();
+			$config = array(
+     			//'doctype' => 'omit',
+     			'quote-marks' =>true,
+			);
+			$clean_summary = $tidy->repairString($item->summary, $config, 'utf8'); // Need to set to utf8 other quotation marks display incorrectly
+
 			if (strlen($item->photo)>0 ){
 				//the feed item has a photo
-				
-				if (strpos($item->summary,$item->photo)===false){
-					// Only display the photo if it is not already in the summary
+
+				//Only show the photo if there is not already a photo in the summary
+				// To avoid showing duplicate photos when different sizes are 
+				if (!findPhotos($clean_summary)[0]){
+				//if (findPhotos($clean_summary)[0] != $item->photo) {
+					
 					$the_page .='<div class="jjreader-item-photo">';
 					$the_page .='<img src="'.$item->photo.'">';
-					$the_page .='</div>';
+					$the_page .='</div>'; 					
 				}
 				
 			}
@@ -542,7 +553,12 @@ function jjreader_display_page($pagenum){
 			if (strlen($item->in_reply_to)>0){
 				$the_page .= '<div class="jjreader-item-reply">reply to post at <a href = "'.$item->in_reply_to.'">'.parse_url($item->in_reply_to,PHP_URL_HOST).'</a></div>';
 			}
-			$the_page .= $item->summary;
+			// Clean up the summary using tidy()
+
+			
+		
+
+			$the_page .= $clean_summary;
 
 			// Display 'read more' button if there is additional content beyond the summary)
 			if (strlen($item->content)>0 ){
