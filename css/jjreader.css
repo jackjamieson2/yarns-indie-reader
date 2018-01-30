@@ -1,6 +1,14 @@
 /* CSS for jjreader
 */
 
+#jjreader_header {
+	margin-top: 1em;
+}
+
+#jjreader_header img {
+	width: 224px;
+	height: auto;
+}
 #jjreader-feed-container {
 	display:block;
 	position:relative;

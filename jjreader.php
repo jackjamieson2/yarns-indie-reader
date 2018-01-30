@@ -60,8 +60,10 @@ $jjreader_db_version = "1.7"; // Updated database structure
 /* Enqueue scripts and styles for the reader page */ 
 add_action( 'wp_enqueue_scripts', 'jjreader_enqueue_scripts' );
 function jjreader_enqueue_scripts() {
-	wp_enqueue_script( 'jquery-ui', plugin_dir_url( __FILE__ ).'jqueryUI/jquery-ui.min.js', array('jquery'), null, true);
-	wp_enqueue_script( 'jjreader_js', plugin_dir_url( __FILE__ ).'js/jjreader.js', array('jquery'), null, true);
+	//register (not enqueue) scripts so they can be loaded later only if the jjreader_page shortcode is used
+		//wp_enqueue_script( 'jquery-ui', plugin_dir_url( __FILE__ ).'jqueryUI/jquery-ui.min.js', array('jquery'), null, true);
+		//wp_register_script( 'jquery-ui', plugin_dir_url( __FILE__ ).'jqueryUI/jquery-ui.min.js', array('jquery'), null, true);
+	wp_register_script( 'jjreader_js', plugin_dir_url( __FILE__ ).'js/jjreader.js', array('jquery'), null, true);
 
 	wp_enqueue_style( 'jjreader-style', plugin_dir_url( __FILE__ ).'css/jjreader.css' );
 	//Add ajax support for the jjreader_js script
@@ -282,7 +284,14 @@ add_shortcode('jjreader_page', 'jjreader_page_shortcode');
 
 // The Following page, visible on the front end
 function jjreader_page(){
-	?> <div id="jjreader"> <?php 
+	// enqueue the reader js (which was registered previously)
+	wp_enqueue_script( 'jjreader_js');
+	?> <div id="jjreader"> 
+		<div id="jjreader_header">
+			<?php echo '<img src="'. plugins_url('images/yarns_heading.png', __FILE__ ).'" alt="Yarns Indie Reader">'; ?> 
+
+		</div>
+		<?php 
 	if (current_user_can('read')){  // Only logged in users can access this page
 		// Show controls for visitors with permission
 		if(current_user_can( 'edit_pages')){ // Only editors or admins can access the controls to manage subscriptions and refresh the feed
@@ -520,7 +529,7 @@ function jjreader_display_page($pagenum){
 			if (strlen($item->photo)>0 ){
 				//the feed item has a photo
 				
-				if (strpos($summary,$item->photo)===false){
+				if (strpos($item->summary,$item->photo)===false){
 					// Only display the photo if it is not already in the summary
 					$the_page .='<div class="jjreader-item-photo">';
 					$the_page .='<img src="'.$item->photo.'">';

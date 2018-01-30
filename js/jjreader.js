@@ -10,11 +10,14 @@
 **   Run on initial page load
 **
 */
-
+	
 
 	// Only run this script if we're on the jjreader page!
 
 	if ($('#jjreader').length > 0 ){
+
+		//Hide the entry title, since we replace it with a header logo 
+		$('.entry-title').hide();
 
 
     var pagenum =0; // Start at page 1
