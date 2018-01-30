@@ -580,7 +580,7 @@ function jjreader_display_page($pagenum){
 				$the_page .= '<div class="jjreader-item-syndication">';
 				foreach($syndication_items as $item){
 
-					$the_page .= '<a href ="'.$item.'">'.parse_url($item,PHP_URL_HOST) .'</span>';
+					$the_page .= '<a href ="'.$item.'" target="_blank">'.parse_url($item,PHP_URL_HOST) .'</span>';
 				}
 				$the_page .= '</div>';
 			}
@@ -842,7 +842,7 @@ function jjreader_response ($response_type, $in_reply_to, $reply_to_title, $repl
 	} else {
 		$display_title = $in_reply_to;
 	}
-	$attribution = '<em><a href="'.$in_reply_to.'" rel="in-reply-to" class="u-in-reply-to h-cite">'.$display_title.'</a></em>';
+	$attribution = '<em><a href="'.$in_reply_to.'" rel="in-reply-to" class="u-in-reply-to h-cite" target="_blank">'.$display_title.'</a></em>';
 
 	if ($response_type == "reply" ){
 		$content = "Reply to " . $attribution . "<br><br>"; 

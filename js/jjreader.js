@@ -173,6 +173,7 @@
 					$the_content = response;
 				} 
 				$('#jjreader-full-content').html($the_content);
+				$('.jjreader-item-content').find('a').attr('target','_blank'); // add target="_blank" to links in the content
 				$('#jjreader-full-box').show();
 				$('#jjreader-full-box').scrollTop(0);
 				
@@ -445,17 +446,24 @@
 						//There are no more posts!
 						$('#jjreader-load-more').html("There are no more posts :(");
 						disable_button($('#jjreader-load-more')); // disable the button (only necesary if there are no posts in the database at all)
-					} else if (pagenum ==0){
-						$('#jjreader-feed-container').html(response);
-						$('#jjreader-load-more').html("Load more...");
-						enable_button($('#jjreader-load-more')); // re-enable the button
-					} else if (pagenum > 0){
-						$('#jjreader-feed-container').append(response);
-						$('#jjreader-load-more').html("Load more...");
-						enable_button($('#jjreader-load-more'));// re-enable the button
+					} else{
+						if (pagenum ==0){
+							$('#jjreader-feed-container').html(response);
+							$('#jjreader-load-more').html("Load more...");
+							enable_button($('#jjreader-load-more')); // re-enable the button
+						} else if (pagenum > 0){
+							$('#jjreader-feed-container').append(response);
+							$('#jjreader-load-more').html("Load more...");
+							enable_button($('#jjreader-load-more'));// re-enable the button
 
-					} 
+						} 
+						// add target="_blank" to all links in summaries
+						$('.jjreader-item-summary').find('a').attr('target','_blank');
+					}
+					
+
 					console.log("finished showing page " + pagenum);
+
 					//console.log(response);
 					pagenum+=1;
 
