@@ -174,8 +174,9 @@
 				} 
 				$('#jjreader-full-content').html($the_content);
 				$('.jjreader-item-content').find('a').attr('target','_blank'); // add target="_blank" to links in the content
+				$('body').addClass('noscroll');
 				$('#jjreader-full-box').show();
-				$('#jjreader-full-box').scrollTop(0);
+				$('#jjreader-full-box').scrollTop(0);  
 				
 
 				//Reset the button to its initial state
@@ -407,6 +408,7 @@
 
     $(document.body).on('click touchend','#jjreader-full-box, #jjreader-full-close', function(e){
     	if (e.target == e.currentTarget){
+    		$("body").removeClass("noscroll");  
     		$("#jjreader-full-box").hide();
     		$("#jjreader-full-content").empty();
     	}
