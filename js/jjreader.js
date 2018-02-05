@@ -402,17 +402,16 @@
     
 
     /* Close the full screen view */
-  
 
-	$(document.body)
-		.on('click touchend','#jjreader-full-content', function(e){
-			//Click inside the content div, do nothing
-			return false;
-    	})
-          .on('click touchend','#jjreader-full-box, #jjreader-full-close', function(e){
-          	//Click on the close button or background container, close the full screen view
-			$("#jjreader-full-box").hide();
+
+
+    $(document.body).on('click touchend','#jjreader-full-box, #jjreader-full-close', function(e){
+    	if (e.target == e.currentTarget){
+    		$("#jjreader-full-box").hide();
     		$("#jjreader-full-content").empty();
+    	}
+          	//Click on the close button or background container, close the full screen view
+			
 	});
     
 
