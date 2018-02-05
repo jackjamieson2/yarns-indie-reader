@@ -60,23 +60,55 @@
 
 
 /*
-** Posts displayed in the feed
+** Posts displayed in the feed / Subscription items
+** (grouped because they share style for consistency)
 */
 
 
-#jjreader-feed-container {
+#jjreader-feed-container, #jjreader-subscription-list {
 	background: #eee;
 	padding: .5rem;
 }
 
-#jjreader .jjreader-feed-item {
+#jjreader .jjreader-feed-item, #jjreader .jjreader-subscription-item {
 	background: #fff;
-	padding: .5rem;
 	border: 1px solid #e1e1e1;
-	margin: .8rem 0;
 	border-radius: 3px;
 	box-shadow: 1px 1px 15px rgba(1,1,1,.1);
 }
+
+#jjreader .jjreader-feed-item{
+	padding: .5rem;
+	margin: .8rem 0;
+}
+
+#jjreader-subscription-list {
+	text-align:center;
+}
+
+#jjreader .jjreader-subscription-item {
+	text-align:left;
+	margin:.5rem;
+	padding:1rem;
+	
+}
+
+#jjreader .jjreader-button-unsubscribe {
+	float:right;
+}
+
+/* 
+** Additional styles for 'manage subscriptions' screen 
+*/
+
+#jjreader .jjreader-subscription-item {
+	
+}
+
+#jjreader .jjreader-subscription-title {
+	display:inline-block;
+}
+
 
 /* The first meta box, at the TOP of each item */
 .jjreader-feed-item .jjreader-item-meta {
@@ -253,7 +285,6 @@ display:inline-block;
   box-shadow: 1px 1px 86px black;
 
 }
-
 
 
 

@@ -344,7 +344,7 @@ function jjreader_subscription_editor(){
 	<div id="jjreader-subscriptions" class="jjreader-hidden">
 	<div id="jjreader-addSite-form"  method="post" action="<?php echo str_replace( '%7E', '~', $_SERVER['REQUEST_URI']); ?>">
 		<h2>Add a subscription</h2><br>
-        <label for="jjreader-siteurl">Site URL </label><input type="text" name="jjreader-siteurl" value="" size="30"><br>
+        <input type="text" name="jjreader-siteurl" value="" size="30"  placeholder = "Enter a website address to subscribe to its content."></input><br>
         <button id="jjreader-addSite-findFeeds" >Find feeds</button>
 		<br><br>
 		<div id="jjreader-choose-feed" class="jjreader-hidden">
@@ -865,6 +865,15 @@ function jjreader_response ($response_type, $in_reply_to, $reply_to_title, $repl
 	} 
 
 	//jjreader_log("posting response");
+
+	/* 
+	Note regarding post_status:
+	potential values (that are useful for this plugin) are: 
+	- draft
+	- publish
+	- pending
+	- private
+	*/
 	$my_post = array(
 		'post_title' => $title,
 		'post_content' => $content,
