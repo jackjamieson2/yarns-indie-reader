@@ -857,9 +857,9 @@ function yarns_reader_response ($response_type, $in_reply_to, $reply_to_title, $
 	} else {
 		$display_title = $in_reply_to;
 	}
-	$attribution = '<em><a href="'.$in_reply_to.'" rel="in-reply-to" class="u-in-reply-to h-cite" target="_blank">'.$display_title.'</a></em>';
 
 	if ($response_type == "reply" ){
+		$attribution = '<em><a href="'.$in_reply_to.'" rel="in-reply-to" class="u-in-reply-to h-cite" target="_blank">'.$display_title.'</a></em>';
 		$content = "Reply to " . $attribution . "<br><br>"; 
 		$content .= $post_content;
 		$title = $post_title;
@@ -873,6 +873,7 @@ function yarns_reader_response ($response_type, $in_reply_to, $reply_to_title, $
 			$post_kind = "note";		
 		}
 	} elseif ($response_type == "like"){
+		$attribution = '<em><a href="'.$in_reply_to.'" rel="like-of" class="u-like u-like-of" target="_blank">'.$display_title.'</a></em>';
 		$content = "Liked " . $attribution;
 		$title = "Liked ". $display_title;
 		$post_type = "link";
