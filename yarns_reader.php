@@ -863,14 +863,14 @@ function yarns_reader_response ($response_type, $in_reply_to, $reply_to_title, $
 		$content = "Reply to " . $attribution . "<br><br>"; 
 		$content .= $post_content;
 		$title = $post_title;
+		$post_kind = "reply";
 		if (strlen($title)>0){
 			//If the reply has a title, it's post kind is 'post'
 			$post_type = "post";
-			$post_kind = "article";
+			
 		} else {
 			//If the reply does not have a title, it's post kind is 'aside'	
 			$post_type = "aside";
-			$post_kind = "note";		
 		}
 	} elseif ($response_type == "like"){
 		$attribution = '<em><a href="'.$in_reply_to.'" rel="like-of" class="u-like u-like-of" target="_blank">'.$display_title.'</a></em>';
@@ -893,7 +893,7 @@ function yarns_reader_response ($response_type, $in_reply_to, $reply_to_title, $
 	$my_post = array(
 		'post_title' => $title,
 		'post_content' => $content,
-		'post_status' => 'draft',
+		'post_status' => 'publish',
 	);
 	$the_post_id = wp_insert_post( $my_post );
 	yarns_reader_log(" response posted: " . $the_post_id);
