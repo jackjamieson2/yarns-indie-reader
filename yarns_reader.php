@@ -1,13 +1,13 @@
 <?php
 /**
- * Plugin Name: JJ Reader
+ * Plugin Name: Yarns Indie Reader
  * Plugin URI: jackjamieson.net
- * Description: JJ Reader is a feed reader. You can subscribe to blogs and websites, view their updates in a feed, then post likes and replies directly to your WordPress site. Replies and likes are marked-up with microformats 2, so posts created with this plugin will support webmentions. 
+ * Description: Yarns Indie Reader is a feed reader. You can subscribe to blogs and websites, view their updates in a feed, then post likes and replies directly to your WordPress site. Replies and likes are marked-up with microformats 2, so posts created with this plugin will support webmentions. 
 
  * Version: 0.1
  * Author: Jack Jamieson
  * Author URI: http://jackjamieson.net
- * Text Domain: jjreader
+ * Text Domain: yarns_reader
  */
  
  /* Copyright 2017 Jack Jamieson (email : jackjamieson@gmail.com)
@@ -49,8 +49,8 @@ if ( ! class_exists( 'phpUri' ) ) {
 
  
 
-global $jjreader_db_version;
-$jjreader_db_version = "1.7"; // Updated database structure 
+global $yarns_reader_db_version;
+$yarns_reader_db_version = "1.7"; // Updated database structure 
 	//version 1.5 - added tags to 'following' table 
 	// version 1.6 changed table text format to utf8mb4 (to support emojis and special characters)
 	// version 1.7 add syndication and in_reply_to properties to feed  items
@@ -59,46 +59,46 @@ $jjreader_db_version = "1.7"; // Updated database structure
 
 
 /* Enqueue scripts and styles for the reader page */ 
-add_action( 'wp_enqueue_scripts', 'jjreader_enqueue_scripts' );
-function jjreader_enqueue_scripts() {
-	//register (not enqueue) scripts so they can be loaded later only if the jjreader_page shortcode is used
+add_action( 'wp_enqueue_scripts', 'yarns_reader_enqueue_scripts' );
+function yarns_reader_enqueue_scripts() {
+	//register (not enqueue) scripts so they can be loaded later only if the yarns_reader_page shortcode is used
 		//wp_enqueue_script( 'jquery-ui', plugin_dir_url( __FILE__ ).'jqueryUI/jquery-ui.min.js', array('jquery'), null, true);
 		//wp_register_script( 'jquery-ui', plugin_dir_url( __FILE__ ).'jqueryUI/jquery-ui.min.js', array('jquery'), null, true);
-	wp_register_script( 'jjreader_js', plugin_dir_url( __FILE__ ).'js/jjreader.js', array('jquery'), null, true);
+	wp_register_script( 'yarns_reader_js', plugin_dir_url( __FILE__ ).'js/yarns_reader.js', array('jquery'), null, true);
 
-	wp_enqueue_style( 'jjreader-style', plugin_dir_url( __FILE__ ).'css/jjreader.css' );
+	wp_enqueue_style( 'yarns_reader-style', plugin_dir_url( __FILE__ ).'css/yarns_reader.css' );
 
-	// also enqueue the css for the jjreader_admin page in the dashboard
-	wp_enqueue_style( 'jjreader-style', plugin_dir_url( __FILE__ ).'css/jjreader.css' );
+	// also enqueue the css for the yarns_reader_admin page in the dashboard
+	wp_enqueue_style( 'yarns_reader-style', plugin_dir_url( __FILE__ ).'css/yarns_reader.css' );
 
-	//Add ajax support for the jjreader_js script
-	wp_localize_script( 'jjreader_js', 'jjreader_ajax', array(
+	//Add ajax support for the yarns_reader_js script
+	wp_localize_script( 'yarns_reader_js', 'yarns_reader_ajax', array(
 		'ajax_url' => admin_url( 'admin-ajax.php' )
 	));
 }
 
-/* Enqueue scripts and styles for the jjreader_admin page */
-add_action( 'admin_enqueue_scripts', 'jjreader_admin_enqueue_scripts' );
-function jjreader_admin_enqueue_scripts($hook) {
-    if ( 'settings_page_jjreader_settings' != $hook ) {
+/* Enqueue scripts and styles for the yarns_reader_admin page */
+add_action( 'admin_enqueue_scripts', 'yarns_reader_admin_enqueue_scripts' );
+function yarns_reader_admin_enqueue_scripts($hook) {
+    if ( 'settings_page_yarns_reader_settings' != $hook ) {
         return;
     }
 
-    wp_enqueue_style( 'jjreader-style', plugin_dir_url( __FILE__ ).'css/jjreader.css' );
+    wp_enqueue_style( 'yarns_reader-style', plugin_dir_url( __FILE__ ).'css/yarns_reader.css' );
 }
 
-/* Define what page should be displayed when "JJ Reader Settings" is clicked in the dashboard*/
-function jjreader_admin() {
-    include('jjreader_admin.php');
+/* Define what page should be displayed when "Yarns Indie Reader Settings" is clicked in the dashboard*/
+function yarns_reader_admin() {
+    include('yarns_reader_admin.php');
 }
 
-/* Create the menu option "JJ Reader Settings" */ 
-function jjreader_admin_actions() {
+/* Create the menu option "Yarns Indie Reader Settings" */ 
+function yarns_reader_admin_actions() {
 	/* add_options_page( $page_title, $menu_title, $capability, $menu_slug, $function);*/
-	add_options_page("JJ Reader Settings", "JJ Reader Settings", 1, "jjreader_settings", "jjreader_admin");
+	add_options_page("Yarns Indie Reader", "Yarns Indie Reader", 1, "yarns_reader_settings", "yarns_reader_admin");
 }
-/* Hook to run jjreader_admin_actions when WordPress generates the admin menu */ 
-add_action('admin_menu', 'jjreader_admin_actions');
+/* Hook to run yarns_reader_admin_actions when WordPress generates the admin menu */ 
+add_action('admin_menu', 'yarns_reader_admin_actions');
 
 
 /* Display an admin notice to configure the plugin when newly installed */
@@ -106,7 +106,7 @@ add_action('admin_menu', 'jjreader_admin_actions');
 function initial_setup_admin_notice() {
     ?>
     <div class="notice notice-info is-dismissible">
-        <p><?php _e( 'JJ Reader needs to be configured (Add a link to the settings page)', 'sample-text-domain' ); ?></p>
+        <p><?php _e( 'Yarns Indie Reader needs to be configured (Add a link to the settings page)', 'sample-text-domain' ); ?></p>
     </div>
     <?php
 }
@@ -119,7 +119,7 @@ function initial_setup_admin_notice() {
 **
 */
 
-function jjreader_install() {
+function yarns_reader_install() {
 	// Activates the plugin and checks for compatible version of WordPress 
 	if ( version_compare( get_bloginfo( 'version' ), '2.9', '<' ) ) {
 		deactivate_plugins ( basename( __FILE__ ));     // Deactivate plugin
@@ -131,8 +131,8 @@ function jjreader_install() {
 		*/ 
 
 	//Set up cron job to check for posts
-	if ( !wp_next_scheduled( 'jjreader_generate_hook' ) ) {            
-		wp_schedule_event( time(), 'sixtymins', 'jjreader_generate_hook' );
+	if ( !wp_next_scheduled( 'yarns_reader_generate_hook' ) ) {            
+		wp_schedule_event( time(), 'sixtymins', 'yarns_reader_generate_hook' );
 	}
 	//Flush rewrite rules - see: https://codex.wordpress.org/Function_Reference/flush_rewrite_rules
 	flush_rewrite_rules( false );
@@ -140,12 +140,12 @@ function jjreader_install() {
 	
 
 /* Create a new table for the reader settings */ 
-function jjreader_create_tables() {
+function yarns_reader_create_tables() {
 	global $wpdb;
-	global $jjreader_db_version;
+	global $yarns_reader_db_version;
 	
 	// Create table to store log
-	$table_log = $wpdb->prefix . "jjreader_log";
+	$table_log = $wpdb->prefix . "yarns_reader_log";
 
 	$sql = "CREATE TABLE " . $table_log . " (
 		id int NOT NULL AUTO_INCREMENT,
@@ -157,10 +157,10 @@ function jjreader_create_tables() {
 	require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
 	dbDelta($sql);
 	
-	jjreader_log("Created jjreader_log table");
+	yarns_reader_log("Created yarns_reader_log table");
 	
 	// Create table to store list of sites to be followed
-	$table_following = $wpdb->prefix . "jjreader_following";
+	$table_following = $wpdb->prefix . "yarns_reader_following";
 
 	$sql = "CREATE TABLE " . $table_following . " (
 		id int NOT NULL AUTO_INCREMENT,
@@ -176,10 +176,10 @@ function jjreader_create_tables() {
 	require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
 	dbDelta($sql);
 	
-	jjreader_log("Created jjreader_following table");
+	yarns_reader_log("Created yarns_reader_following table");
 	// Create table to store posts from followed sites
 
-	$table_posts = $wpdb->prefix . "jjreader_posts";
+	$table_posts = $wpdb->prefix . "yarns_reader_posts";
 
 	$sql = "CREATE TABLE " . $table_posts . " (
 		id int NOT NULL AUTO_INCREMENT,
@@ -213,18 +213,18 @@ function jjreader_create_tables() {
 	
 	require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
 	dbDelta($sql);
-	jjreader_log("Created jjreader_posts table");
-	jjreader_log("updating db version from ".get_site_option('jjreader_db_version')." to ". $jjreader_db_version);
-	update_option( 'jjreader_db_version', $jjreader_db_version );
-	jjreader_log("updated db version to ". get_site_option('jjreader_db_version'));
+	yarns_reader_log("Created yarns_reader_posts table");
+	yarns_reader_log("updating db version from ".get_site_option('yarns_reader_db_version')." to ". $yarns_reader_db_version);
+	update_option( 'yarns_reader_db_version', $yarns_reader_db_version );
+	yarns_reader_log("updated db version to ". get_site_option('yarns_reader_db_version'));
 }
 
 
 /* Check if the database version has changed, and update the database if so */
-function jjreader_update_db_check() {
-	global $jjreader_db_version;
-	if (get_site_option('jjreader_db_version') != $jjreader_db_version) {
-		jjreader_create_tables();
+function yarns_reader_update_db_check() {
+	global $yarns_reader_db_version;
+	if (get_site_option('yarns_reader_db_version') != $yarns_reader_db_version) {
+		yarns_reader_create_tables();
 	}
 }
 
@@ -232,7 +232,7 @@ function jjreader_update_db_check() {
 /* Create the following page */ 
 function create_following_page(){
 	echo "Creating following page";
-    $feedlocation = get_option('jjreader_feedlocation');
+    $feedlocation = get_option('yarns_reader_feedlocation');
 
         if (!get_page_by_title( $feedlocation )){
         $current_user = wp_get_current_user();
@@ -242,10 +242,10 @@ function create_following_page(){
                 'comment_status' => 'closed', 
                 'ping_status' => 'closed', 
                 'post_author' => $current_user->ID,
-                'post_content' => '[jjreader_page]', 
+                'post_content' => '[yarns_indie_reader]', 
                 'post_name' => $feedlocation, 
                 'post_status' => 'publish', 
-                'post_title' => 'JJ Reader', 
+                'post_title' => 'Yarns Indie Reader', 
                 'post_type' => 'page' 
             ); 
             if(wp_insert_post( $post )<1)
@@ -264,7 +264,7 @@ function create_following_page(){
 /*
 ** Defines the interval for the cron job (60 minutes) 
 */
-function jjreader_cron_definer($schedules){
+function yarns_reader_cron_definer($schedules){
 	/*
 	$schedules['fivemins'] = array(
 		'interval'=> 300,
@@ -286,23 +286,23 @@ function jjreader_cron_definer($schedules){
 
 /*
 **
-**   Display feed reader page when [jjreader_page] shortcode is used
+**   Display feed reader page when [yarns_indie_reader] shortcode is used
 **
 */
 
-// Function to make the jjreader_page shortcode work
-function jjreader_page_shortcode() {
-    jjreader_page();
+// Function to make the yarns_reader_page shortcode work
+function yarns_reader_page_shortcode() {
+    yarns_reader_page();
 }
-add_shortcode('jjreader_page', 'jjreader_page_shortcode');
+add_shortcode('yarns_indie_reader', 'yarns_reader_page_shortcode');
 
 
 // The Following page, visible on the front end
-function jjreader_page(){
+function yarns_reader_page(){
 	// enqueue the reader js (which was registered previously)
-	wp_enqueue_script( 'jjreader_js');
-	?> <div id="jjreader"> 
-		<div id="jjreader_header">
+	wp_enqueue_script( 'yarns_reader_js');
+	?> <div id="yarns_reader"> 
+		<div id="yarns_reader_header">
 			<?php echo '<img src="'. plugins_url('images/yarns_heading.png', __FILE__ ).'" alt="Yarns Indie Reader">'; ?> 
 
 		</div>
@@ -311,15 +311,15 @@ function jjreader_page(){
 		// Show controls for visitors with permission
 		if(current_user_can( 'edit_pages')){ // Only editors or admins can access the controls to manage subscriptions and refresh the feed
 			?>
-			<div class="jjreader-controls">
+			<div class="yarns_reader-controls">
 				
-				<button id="jjreader-button-feed">View feed</button>
-				<button id="jjreader-button-subscriptions" >Manage subscriptions</button>
-				<button id="jjreader-button-refresh" >Update feed</button> 
-				<time id="jjreader-last-updated"></time>
-			</div><!--.jjreader-controls-->
+				<button id="yarns_reader-button-feed">View feed</button>
+				<button id="yarns_reader-button-subscriptions" >Manage subscriptions</button>
+				<button id="yarns_reader-button-refresh" >Update feed</button> 
+				<time id="yarns_reader-last-updated"></time>
+			</div><!--.yarns_reader-controls-->
 
-			<?php jjreader_subscription_editor(); ?>
+			<?php yarns_reader_subscription_editor(); ?>
 
 
 			<?php
@@ -328,17 +328,17 @@ function jjreader_page(){
 		
 		// SHow the feed for logged in visitors
 		?>
-		<div id = "jjreader-feed-container"></div><!--#jjreader-feed-container-->
+		<div id = "yarns_reader-feed-container"></div><!--#yarns_reader-feed-container-->
 
 
-		<button  id="jjreader-load-more">Load more...</button> 
+		<button  id="yarns_reader-load-more">Load more...</button> 
 		<?php 
 		// Add placeholder box for 'full' content 
 		?>
-		<div id="jjreader-full-box" class="jjreader-hidden">
-  			<span id="jjreader-full-close" >&times;</span>
-  			<div id="jjreader-full-content"></div>
-  		</div><!--#jjreader-full-box-->
+		<div id="yarns_reader-full-box" class="yarns_reader-hidden">
+  			<span id="yarns_reader-full-close" >&times;</span>
+  			<div id="yarns_reader-full-content"></div>
+  		</div><!--#yarns_reader-full-box-->
  
 		<?php
 
@@ -347,47 +347,47 @@ function jjreader_page(){
 	} else {
 		// The visitor is not logged in
 		?>
-		<div id = "jjreader-feed-error">Sorry, you must be logged in to view this page.</div>
+		<div id = "yarns_reader-feed-error">Sorry, you must be logged in to view this page.</div>
 		<?php
 	}
-	?> </div><!--#jjreader--> <?php
+	?> </div><!--#yarns_reader--> <?php
 }
 
 /* Show interface for adding/removing/editing subscriptions */
-function jjreader_subscription_editor(){
+function yarns_reader_subscription_editor(){
 	?>
-	<div id="jjreader-subscriptions" class="jjreader-hidden">
-	<div id="jjreader-addSite-form"  method="post" action="<?php echo str_replace( '%7E', '~', $_SERVER['REQUEST_URI']); ?>">
+	<div id="yarns_reader-subscriptions" class="yarns_reader-hidden">
+	<div id="yarns_reader-addSite-form"  method="post" action="<?php echo str_replace( '%7E', '~', $_SERVER['REQUEST_URI']); ?>">
 		<h2>Add a subscription</h2><br>
-        <input type="text" name="jjreader-siteurl" value="" size="30"  placeholder = "Enter a website address to subscribe to its content."></input><br>
-        <button id="jjreader-addSite-findFeeds" >Find feeds</button>
+        <input type="text" name="yarns_reader-siteurl" value="" size="30"  placeholder = "Enter a website address to subscribe to its content."></input><br>
+        <button id="yarns_reader-addSite-findFeeds" >Find feeds</button>
 		<br><br>
-		<div id="jjreader-choose-feed" class="jjreader-hidden">
-		<form class="jjreader-feedpicker jjreader-hidden "></form>
-		<label for="jjreader-feedurl">Feed URL </label><input type="text" name="jjreader-feedurl" value="" size="30"><br>
-		<label for="jjreader-sitetitle">Site Title </label><input type="text" name="jjreader-sitetitle" value="" size="30"><br>
-		<div>Feed type:<span class="jjreader-feed-type"></span></div>
-		<button id="jjreader-addSite-submit" >Submit</button>
-		</div><!--#jjreader-choose-feed-->
+		<div id="yarns_reader-choose-feed" class="yarns_reader-hidden">
+		<form class="yarns_reader-feedpicker yarns_reader-hidden "></form>
+		<label for="yarns_reader-feedurl">Feed URL </label><input type="text" name="yarns_reader-feedurl" value="" size="30"><br>
+		<label for="yarns_reader-sitetitle">Site Title </label><input type="text" name="yarns_reader-sitetitle" value="" size="30"><br>
+		<div>Feed type:<span class="yarns_reader-feed-type"></span></div>
+		<button id="yarns_reader-addSite-submit" >Submit</button>
+		</div><!--#yarns_reader-choose-feed-->
 	</div>
 
 	<h2> Manage subscriptions </h2><br>
-	<div id="jjreader-subscription-list">
-	</div><!--#jjreader-subscription-list-->
+	<div id="yarns_reader-subscription-list">
+	</div><!--#yarns_reader-subscription-list-->
 	
-	</div><!--#jjreader-subscriptions-->
+	</div><!--#yarns_reader-subscriptions-->
 	<?php
 }
 
 // Displays a full list of the subscriptions 
-add_action( 'wp_ajax_jjreader_subscription_list', 'jjreader_subscription_list' );
-function jjreader_subscription_list(){
+add_action( 'wp_ajax_yarns_reader_subscription_list', 'yarns_reader_subscription_list' );
+function yarns_reader_subscription_list(){
 	// Start with a blank page
 	$subscriptions_list = '';
 	global $wpdb;
 	$items = $wpdb->get_results(
 		'SELECT * 
-		FROM  `'.$wpdb->prefix . 'jjreader_following` 
+		FROM  `'.$wpdb->prefix . 'yarns_reader_following` 
 		ORDER BY  `sitetitle`  ASC;'  
 	);
 	// Note: Currently this sorts the subscription list as case sensitive. It would be better to sort case insensitive. 
@@ -395,20 +395,20 @@ function jjreader_subscription_list(){
 	// Generate HTML for each subscription item
 	if ( !empty( $items ) ) { 			
 		foreach ( $items as $item ) {
-			$subscriptions_list .= '<div class="jjreader-subscription-item" data-id="'.$item->id.'">';
-			$subscriptions_list .= '<span class="jjreader-subscription-title">'.$item->sitetitle.'</span>';
-			$subscriptions_list .= '<button class="jjreader-button-edit-subscription jjreader-hidden" >Edit</button>';
-			$subscriptions_list .= '<button class="jjreader-button-unsubscribe">Unsubscribe</button>';
+			$subscriptions_list .= '<div class="yarns_reader-subscription-item" data-id="'.$item->id.'">';
+			$subscriptions_list .= '<span class="yarns_reader-subscription-title">'.$item->sitetitle.'</span>';
+			$subscriptions_list .= '<button class="yarns_reader-button-edit-subscription yarns_reader-hidden" >Edit</button>';
+			$subscriptions_list .= '<button class="yarns_reader-button-unsubscribe">Unsubscribe</button>';
 
-			$subscriptions_list .= '<div class="jjreader-subscription-options jjreader-hidden">';
+			$subscriptions_list .= '<div class="yarns_reader-subscription-options yarns_reader-hidden">';
 			$subscriptions_list .= '<h3>Edit this subscription</h3>';
-			$subscriptions_list .='<label for="jjreader-sitetitle">Site Title </label><input type="text" name="jjreader-sitetitle" value="'.$item->sitetitle.'" size="30"><br>';
-			$subscriptions_list .='<label for="jjreader-feedurl">Feed URL </label><input type="text" name="jjreader-feedurl" value="'.$item->feedurl.'" size="30"><br>';
-			$subscriptions_list .='<label for="jjreader-siteurl">Site URL </label><input type="text" name="jjreader-siteurl" value="'.$item->siteurl.'" size="30"><br>';
-			$subscriptions_list .='<label for="jjreader-siteurl">Site URL </label><input type="text" name="jjreader-feedtags" value="'.$item->tags.'" size="30"><br>';
-			$subscriptions_list .= '<button class="jjreader-subscription-save">Save changes</button>';
-			$subscriptions_list .= '</div><!--.jjreader-subscription-options-->';
-			$subscriptions_list .= '</div><!--.jjreader-subscription-item-->'; 
+			$subscriptions_list .='<label for="yarns_reader-sitetitle">Site Title </label><input type="text" name="yarns_reader-sitetitle" value="'.$item->sitetitle.'" size="30"><br>';
+			$subscriptions_list .='<label for="yarns_reader-feedurl">Feed URL </label><input type="text" name="yarns_reader-feedurl" value="'.$item->feedurl.'" size="30"><br>';
+			$subscriptions_list .='<label for="yarns_reader-siteurl">Site URL </label><input type="text" name="yarns_reader-siteurl" value="'.$item->siteurl.'" size="30"><br>';
+			$subscriptions_list .='<label for="yarns_reader-siteurl">Site URL </label><input type="text" name="yarns_reader-feedtags" value="'.$item->tags.'" size="30"><br>';
+			$subscriptions_list .= '<button class="yarns_reader-subscription-save">Save changes</button>';
+			$subscriptions_list .= '</div><!--.yarns_reader-subscription-options-->';
+			$subscriptions_list .= '</div><!--.yarns_reader-subscription-item-->'; 
 		}
 	} else {
 		$subscriptions_list .= "You have not subscribed to any sites yet! Click 'Add Subscription' to do so.";
@@ -417,54 +417,54 @@ function jjreader_subscription_list(){
 	wp_die();
 }
 
-add_action( 'wp_ajax_jjreader_get_lastupdated', 'jjreader_get_lastupdated' );
-function jjreader_get_lastupdated(){
-	echo user_datetime(get_option('jjreader_last_updated'));
+add_action( 'wp_ajax_yarns_reader_get_lastupdated', 'yarns_reader_get_lastupdated' );
+function yarns_reader_get_lastupdated(){
+	echo user_datetime(get_option('yarns_reader_last_updated'));
 	wp_die();
 }
 
 
 
 /* Return html for reply actions if the user has permission to create posts */
-function jjreader_reply_actions($post_type, $liked, $replied, $rsvped){
+function yarns_reader_reply_actions($post_type, $liked, $replied, $rsvped){
 	$the_reply_actions = '';
 	if(current_user_can( 'publish_posts')){ // Reply actions are only available to users who can publish posts
-		$the_reply_actions .= '<div class ="jjreader-response-controls"> ';
+		$the_reply_actions .= '<div class ="yarns_reader-response-controls"> ';
 		if ($liked){
 			//this post has been liked
-			$the_reply_actions .= '<button class="jjreader-like jjreader-response-exists " data-link="'.$liked.'"></button>';
+			$the_reply_actions .= '<button class="yarns_reader-like yarns_reader-response-exists " data-link="'.$liked.'"></button>';
 		} else {
 			// this post has not been liked
-			$the_reply_actions .= '<button class="jjreader-like " ></button>';
+			$the_reply_actions .= '<button class="yarns_reader-like " ></button>';
 		}
 
 		if ($replied){
 			//this post has been liked
-			$the_reply_actions .= '<button class="jjreader-reply jjreader-response-exists " data-link="'.$replied.'"></button>';
+			$the_reply_actions .= '<button class="yarns_reader-reply yarns_reader-response-exists " data-link="'.$replied.'"></button>';
 		} else {
 			// this post has not been liked
-			$the_reply_actions .= '<button class="jjreader-reply " ></button>';
+			$the_reply_actions .= '<button class="yarns_reader-reply " ></button>';
 		}
 
 		// Disabling RSVP replies for now — Will add again later.
 		/*
 		if ($post_type=="h-event"){
 		
-			$the_reply_actions .= '<span class ="jjreader-rsvp-buttons">RSVP:';
-			$the_reply_actions .= '<button class="jjreader-rsvp-yes ">Yes</button>';
-			$the_reply_actions .= '<button class="jjreader-rsvp-no ">No</button>';
-			$the_reply_actions .= '<button class="jjreader-rsvp-interested ">Interested</button>';
-			$the_reply_actions .= '<button class="jjreader-rsvp-yes ">Maybe</button>';
+			$the_reply_actions .= '<span class ="yarns_reader-rsvp-buttons">RSVP:';
+			$the_reply_actions .= '<button class="yarns_reader-rsvp-yes ">Yes</button>';
+			$the_reply_actions .= '<button class="yarns_reader-rsvp-no ">No</button>';
+			$the_reply_actions .= '<button class="yarns_reader-rsvp-interested ">Interested</button>';
+			$the_reply_actions .= '<button class="yarns_reader-rsvp-yes ">Maybe</button>';
 			$the_reply_actions .= '</span>';
 		}
 		*/
-		$the_reply_actions .= '<div class="jjreader-reply-input jjreader-hidden">';
-			$the_reply_actions .= '<input class ="jjreader-reply-title" placeholder = "Enter a reply title (if desired)"></input>';
-			$the_reply_actions .= '<textarea class ="jjreader-reply-text" placeholder="Enter your reply here" ></textarea>';
-			$the_reply_actions .= '<button class="jjreader-reply-submit ">Submit</button>';
+		$the_reply_actions .= '<div class="yarns_reader-reply-input yarns_reader-hidden">';
+			$the_reply_actions .= '<input class ="yarns_reader-reply-title" placeholder = "Enter a reply title (if desired)"></input>';
+			$the_reply_actions .= '<textarea class ="yarns_reader-reply-text" placeholder="Enter your reply here" ></textarea>';
+			$the_reply_actions .= '<button class="yarns_reader-reply-submit ">Submit</button>';
 		$the_reply_actions .= '</div>';
 
-		$the_reply_actions .= '</div><!--.jjreader-response-controls-->';
+		$the_reply_actions .= '</div><!--.yarns_reader-response-controls-->';
 	}
 	return $the_reply_actions;
 }
@@ -478,22 +478,22 @@ function jjreader_reply_actions($post_type, $liked, $replied, $rsvped){
 /*
 **
 **   Major functions
-		- jjreader_display_page (ajax)
-		- jjreader_add_feeditem 
-		- jjreader_new_subscription (ajax)
-		- jjreader_response (ajax)
-		- jjreader_findFeeds (ajax)
-		- jjreader_aggregator 
+		- yarns_reader_display_page (ajax)
+		- yarns_reader_add_feeditem 
+		- yarns_reader_new_subscription (ajax)
+		- yarns_reader_response (ajax)
+		- yarns_reader_findFeeds (ajax)
+		- yarns_reader_aggregator 
 
-		jjreader_fetch_feed
-		jjreader_fetch_hfeed
+		yarns_reader_fetch_feed
+		yarns_reader_fetch_hfeed
 
 **	
 */
 
 /* Returns a single page for display */ 
-add_action( 'wp_ajax_jjreader_display_page', 'jjreader_display_page' );
-function jjreader_display_page($pagenum){
+add_action( 'wp_ajax_yarns_reader_display_page', 'yarns_reader_display_page' );
+function yarns_reader_display_page($pagenum){
 	// load a page into variable $the_page then echo it
 	$pagenum = $_POST['pagenum'];
 
@@ -501,18 +501,18 @@ function jjreader_display_page($pagenum){
 	global $wpdb;
 	// Start at post 0, show 15 posts per page
 	$length = 15;
-	//$table_following = $wpdb->prefix . "jjreader_posts";
+	//$table_following = $wpdb->prefix . "yarns_reader_posts";
 	$items = $wpdb->get_results(
 		'SELECT * 
-		FROM  `'.$wpdb->prefix . 'jjreader_posts` 
+		FROM  `'.$wpdb->prefix . 'yarns_reader_posts` 
 		ORDER BY  `published` DESC 
 		LIMIT '.($pagenum*$length).' , '.$length.';'
 	);
 
 	//Iterate through all the posts in the database. Display the first 15 
 	if ( !empty( $items ) ) { 
-		//$the_page = '<div class="jjreader-page-'.$pagenum.'">';
-		$the_page = '<div class="jjreader-test">';
+		//$the_page = '<div class="yarns_reader-page-'.$pagenum.'">';
+		$the_page = '<div class="yarns_reader-test">';
 		//$the_page = "Page ". $pagenum ;
 		foreach ( $items as $item ) {
 			if ($item->posttype=="h-event"){
@@ -530,16 +530,16 @@ function jjreader_display_page($pagenum){
 			*/
 
 			// Display an individual feed item
-			$the_page .= '<div class="jjreader-feed-item" data-id="'.$item->id.'">'; // container for each feed item
+			$the_page .= '<div class="yarns_reader-feed-item" data-id="'.$item->id.'">'; // container for each feed item
 		
-			$the_page .= '<div class="jjreader-item-meta">'; // container for meta 
-			$the_page .= '<a class="jjreader-item-authorname" href="'.$item->siteurl.'" target="_blank">'.$item->sitetitle.'</a> '; // authorname
-			$the_page .= '<a class="jjreader-item-date" href="'.$item->permalink.'" target="_blank">at '.user_datetime($item->published).'</a>'; // date/permalink
-			//$the_page .= '<span class="jjreader-item-type">'.$display_type.'</span>'; // display type
+			$the_page .= '<div class="yarns_reader-item-meta">'; // container for meta 
+			$the_page .= '<a class="yarns_reader-item-authorname" href="'.$item->siteurl.'" target="_blank">'.$item->sitetitle.'</a> '; // authorname
+			$the_page .= '<a class="yarns_reader-item-date" href="'.$item->permalink.'" target="_blank">at '.user_datetime($item->published).'</a>'; // date/permalink
+			//$the_page .= '<span class="yarns_reader-item-type">'.$display_type.'</span>'; // display type
 			
-			$the_page .= '</div><!--.jjreader-item-meta-->';
+			$the_page .= '</div><!--.yarns_reader-item-meta-->';
 			if ($item->title !=""){
-				$the_page .= '<a class="jjreader-item-title" href="'.$item->permalink.'" target="_blank">'.$item->title.'</a>';
+				$the_page .= '<a class="yarns_reader-item-title" href="'.$item->permalink.'" target="_blank">'.$item->title.'</a>';
 			}
 
 			$tidy = new tidy();
@@ -557,16 +557,16 @@ function jjreader_display_page($pagenum){
 				if (!findPhotos($clean_summary)[0]){
 				//if (findPhotos($clean_summary)[0] != $item->photo) {
 					
-					$the_page .='<div class="jjreader-item-photo">';
+					$the_page .='<div class="yarns_reader-item-photo">';
 					$the_page .='<img src="'.$item->photo.'">';
 					$the_page .='</div>'; 					
 				}
 				
 			}
 			
-			$the_page .='<div class="jjreader-item-summary">';
+			$the_page .='<div class="yarns_reader-item-summary">';
 			if (strlen($item->in_reply_to)>0){
-				$the_page .= '<div class="jjreader-item-reply">reply to post at <a href = "'.$item->in_reply_to.'" target="_blank">'.parse_url($item->in_reply_to,PHP_URL_HOST).'</a></div>';
+				$the_page .= '<div class="yarns_reader-item-reply">reply to post at <a href = "'.$item->in_reply_to.'" target="_blank">'.parse_url($item->in_reply_to,PHP_URL_HOST).'</a></div>';
 			}
 			// Clean up the summary using tidy()
 
@@ -577,39 +577,39 @@ function jjreader_display_page($pagenum){
 
 			// Display 'read more' button if there is additional content beyond the summary)
 			if (strlen($item->content)>0 ){
-				$the_page .='<a class="jjreader-item-more">See more...</a><!--.jjreader-item-more-->'; 
-				//$the_page .='<div class="jjreader-item-content jjreader-hidden">';
+				$the_page .='<a class="yarns_reader-item-more">See more...</a><!--.yarns_reader-item-more-->'; 
+				//$the_page .='<div class="yarns_reader-item-content yarns_reader-hidden">';
 				//$the_page .= $item->content;
-				//$the_page .= '</div><!--.jjreader-item-content-->';
+				//$the_page .= '</div><!--.yarns_reader-item-content-->';
 			}
 
-			$the_page .='</div><!--.jjreader-item-summary-->'; 
+			$the_page .='</div><!--.yarns_reader-item-summary-->'; 
 
-			$the_page .= '<div class="jjreader-item-meta2">'; // container for meta2
+			$the_page .= '<div class="yarns_reader-item-meta2">'; // container for meta2
 			if (strlen($item->location)>0){
-				$the_page .= '<div class="jjreader-item-location">'.$item->location.'</div>'; // display type
+				$the_page .= '<div class="yarns_reader-item-location">'.$item->location.'</div>'; // display type
 			}
 
 			if (strlen($item->syndication)>0){
 				$syndication_items = json_decode($item->syndication);
-				$the_page .= '<div class="jjreader-item-syndication">';
+				$the_page .= '<div class="yarns_reader-item-syndication">';
 				foreach($syndication_items as $item){
 
-					$the_page .= '<a href ="'.$item.'" target="_blank">'.parse_url($item,PHP_URL_HOST) .'</span>';
+					$the_page .= '<a href ="'.$item.'" target="_blank">'.parse_url($item,PHP_URL_HOST) .'</a>';
 				}
 				$the_page .= '</div>';
 			}
 
-			$the_page .= '</div><!--.jjreader-item-meta2-->';
+			$the_page .= '</div><!--.yarns_reader-item-meta2-->';
 
 			
 
-			$the_page .= '<div class="jjreader-item-response">'.jjreader_reply_actions($item->posttype,$item->liked,$item->replied,$item->rsvped);
-			$the_page .= '</div><!--.jjreader-item-response-->';
+			$the_page .= '<div class="yarns_reader-item-response">'.yarns_reader_reply_actions($item->posttype,$item->liked,$item->replied,$item->rsvped);
+			$the_page .= '</div><!--.yarns_reader-item-response-->';
 
-			$the_page .= '</div><!--.jjreader-feed-item-->';	
+			$the_page .= '</div><!--.yarns_reader-feed-item-->';	
 		}
-		$the_page .= '</div><!--jjreader-page-'.$pagenum.'-->';
+		$the_page .= '</div><!--yarns_reader-page-'.$pagenum.'-->';
 		echo $the_page;
 
 	} else {
@@ -621,46 +621,46 @@ function jjreader_display_page($pagenum){
 
 
 /* Returns FULL CONTENT for a single item display */ 
-add_action( 'wp_ajax_jjreader_display_full_content', 'jjreader_display_full_content' );
-function jjreader_display_full_content($id){
+add_action( 'wp_ajax_yarns_reader_display_full_content', 'yarns_reader_display_full_content' );
+function yarns_reader_display_full_content($id){
 	$id = $_POST['id'];
 
 	global $wpdb;
 
-	$query = "SELECT * FROM ".$wpdb->prefix."jjreader_posts WHERE id = '".$id."'";
+	$query = "SELECT * FROM ".$wpdb->prefix."yarns_reader_posts WHERE id = '".$id."'";
  
 
 	$item = $wpdb->get_row($query);
 		
 
 	if ( !empty( $item ) ) { 
-		$the_page .= '<div class="jjreader-feed-item" data-id="'.$item->id.'">'; // container for each feed item
+		$the_page .= '<div class="yarns_reader-feed-item" data-id="'.$item->id.'">'; // container for each feed item
 			
-		$the_page .= '<div class="jjreader-item-meta">'; // container for meta 
-		$the_page .= '<a class="jjreader-item-authorname" href="'.$item->siteurl.'">'.$item->sitetitle.'</a> '; // authorname
-		$the_page .= '<a class="jjreader-item-date" href="'.$item->permalink.'">at '.user_datetime($item->published).'</a>'; // date/permalink
-		$the_page .= '<span class="jjreader-item-type">'.$display_type.'</span>'; // display type
-		$the_page .= '</div><!--.jjreader-item-meta-->';
+		$the_page .= '<div class="yarns_reader-item-meta">'; // container for meta 
+		$the_page .= '<a class="yarns_reader-item-authorname" href="'.$item->siteurl.'">'.$item->sitetitle.'</a> '; // authorname
+		$the_page .= '<a class="yarns_reader-item-date" href="'.$item->permalink.'">at '.user_datetime($item->published).'</a>'; // date/permalink
+		$the_page .= '<span class="yarns_reader-item-type">'.$display_type.'</span>'; // display type
+		$the_page .= '</div><!--.yarns_reader-item-meta-->';
 		if ($item->title !=""){
-			$the_page .= '<a class="jjreader-item-title" href="'.$item->permalink.'">'.$item->title.'</a>';
+			$the_page .= '<a class="yarns_reader-item-title" href="'.$item->permalink.'">'.$item->title.'</a>';
 		}
 
-		$the_page .='<div class="jjreader-item-content">';
+		$the_page .='<div class="yarns_reader-item-content">';
 		if (strlen($item->in_reply_to)>0){
-				$the_page .= '<div class="jjreader-item-reply">reply to post at <a href = "'.$item->in_reply_to.'" target="_blank">'.parse_url($item->in_reply_to,PHP_URL_HOST).'</a></div>';
+				$the_page .= '<div class="yarns_reader-item-reply">reply to post at <a href = "'.$item->in_reply_to.'" target="_blank">'.parse_url($item->in_reply_to,PHP_URL_HOST).'</a></div>';
 
 			}
 		$the_page .= $item->content;
-		$the_page .= '</div><!--.jjreader-item-content-->';
+		$the_page .= '</div><!--.yarns_reader-item-content-->';
 		
-		$the_page .= '<div class="jjreader-item-meta2">'; // container for meta2
+		$the_page .= '<div class="yarns_reader-item-meta2">'; // container for meta2
 		if (strlen($item->location)>0){
-			$the_page .= '<div class="jjreader-item-location">'.$item->location.'</div>'; // display type
+			$the_page .= '<div class="yarns_reader-item-location">'.$item->location.'</div>'; // display type
 		}
 
 		if (strlen($item->syndication)>0){
 			$syndication_items = json_decode($item->syndication);
-			$the_page .= '<div class="jjreader-item-syndication">';
+			$the_page .= '<div class="yarns_reader-item-syndication">';
 			foreach($syndication_items as $item){
 
 				$the_page .= '<a href ="'.$item.'" >'.parse_url($item,PHP_URL_HOST) .'</span>';
@@ -668,21 +668,21 @@ function jjreader_display_full_content($id){
 			$the_page .= '</div>';
 		}
 
-		$the_page .= '</div><!--.jjreader-item-meta2-->';		
+		$the_page .= '</div><!--.yarns_reader-item-meta2-->';		
 
-		$the_page .= '<div class="jjreader-item-response">'.jjreader_reply_actions($item->posttype,$item->liked,$item->replied,$item->rsvped);
+		$the_page .= '<div class="yarns_reader-item-response">'.yarns_reader_reply_actions($item->posttype,$item->liked,$item->replied,$item->rsvped);
 
 		echo $the_page;
 
-		$the_page .= '</div><!--.jjreader-feed-item-->';
+		$the_page .= '</div><!--.yarns_reader-feed-item-->';
 		} else {
 			// something went wrong fetching the item
 			
 			$lastquery = $wpdb->last_query;
 			$lasterror = $wpdb->last_error;
-			jjreader_log("could not fetch post with id = " . $id);
-			jjreader_log($lastquery);
-			jjreader_log($lasterror);
+			yarns_reader_log("could not fetch post with id = " . $id);
+			yarns_reader_log($lastquery);
+			yarns_reader_log($lasterror);
 			echo "error";
 		}	
 
@@ -690,20 +690,20 @@ function jjreader_display_full_content($id){
 }
 
  
-/* Add a post to the jjreader_posts table in the database */
-function jjreader_add_feeditem($feedid,$title,$summary,$content,$published=0,$updated=0,$authorname='',$authorurl='',$avurl='',$permalink,$location,$photo,$type,$siteurl,$sitetitle,$syndication='',$in_reply_to=''){
+/* Add a post to the yarns_reader_posts table in the database */
+function yarns_reader_add_feeditem($feedid,$title,$summary,$content,$published=0,$updated=0,$authorname='',$authorurl='',$avurl='',$permalink,$location,$photo,$type,$siteurl,$sitetitle,$syndication='',$in_reply_to=''){
 
-	//jjreader_log("adding post: ".$permalink.": ".$title);
+	//yarns_reader_log("adding post: ".$permalink.": ".$title);
 	global $wpdb;
 
 
-	//jjreader_log("published = " . $published);
+	//yarns_reader_log("published = " . $published);
 	if($published < 1){
 		$published = time();
 	}
-	//jjreader_log("published2 = " . $published);
+	//yarns_reader_log("published2 = " . $published);
 	$published = date('Y-m-d H:i:s',$published);
-	//jjreader_log("published3 = " . $published);
+	//yarns_reader_log("published3 = " . $published);
 	$updated = date('Y-m-d H:i:s',$updated);
 
 
@@ -754,7 +754,7 @@ function jjreader_add_feeditem($feedid,$title,$summary,$content,$published=0,$up
 	if (empty($authorurl)){$authorurl = $siteurl;}
 
 	// Add the post (if it doesn't already exist)
-	$table_name = $wpdb->prefix . "jjreader_posts";
+	$table_name = $wpdb->prefix . "yarns_reader_posts";
 	if($wpdb->get_var( "SELECT COUNT(*) FROM ".$table_name." WHERE permalink LIKE \"".$permalink."\";")<1){
 		$rows_affected = $wpdb->insert( $table_name,
 			array(	
@@ -781,17 +781,17 @@ function jjreader_add_feeditem($feedid,$title,$summary,$content,$published=0,$up
 		if($rows_affected == false){
 			$lastquery = $wpdb->last_query;
 			$lasterror = $wpdb->last_error;
-			jjreader_log("could not insert post into database!");
-			jjreader_log($lastquery);
-			jjreader_log($lasterror);
+			yarns_reader_log("could not insert post into database!");
+			yarns_reader_log($lastquery);
+			yarns_reader_log($lasterror);
 
 
 			die("could not insert post into database!" .$permalink.": ".$title);
 		}else{
-			jjreader_log("added ".$permalink.": ".$title);
+			yarns_reader_log("added ".$permalink.": ".$title);
 		}
 	}else{
-		//jjreader_log("post already exists: " .$permalink.": ".$title);
+		//yarns_reader_log("post already exists: " .$permalink.": ".$title);
 	}	
 
 }
@@ -799,19 +799,19 @@ function jjreader_add_feeditem($feedid,$title,$summary,$content,$published=0,$up
 /*
 ** Add a new subscription
 */ 
-add_action( 'wp_ajax_jjreader_new_subscription', 'jjreader_new_subscription' );
-function jjreader_new_subscription($siteurl, $feedurl, $sitetitle, $feedtype){
+add_action( 'wp_ajax_yarns_reader_new_subscription', 'yarns_reader_new_subscription' );
+function yarns_reader_new_subscription($siteurl, $feedurl, $sitetitle, $feedtype){
 	$siteurl = $_POST['siteurl'];
 	$feedurl = $_POST['feedurl'];
 	$sitetitle = $_POST['sitetitle'];
 	$feedtype = $_POST['feedtype'];
-	jjreader_log("adding subscription: ". $feedurl. " @ ". $sitetitle);
+	yarns_reader_log("adding subscription: ". $feedurl. " @ ". $sitetitle);
 	
 	global $wpdb;
-	$table_name = $wpdb->prefix . "jjreader_following";
+	$table_name = $wpdb->prefix . "yarns_reader_following";
 	// Check if the site is already subscribed
 	if($wpdb->get_var( "SELECT COUNT(*) FROM ".$table_name." WHERE feedurl LIKE \"".$feedurl."\";")<1){
-		//jjreader_log("no duplicate found");
+		//yarns_reader_log("no duplicate found");
 		$rows_affected = $wpdb->insert( $table_name,
 			array(
 				'added' => current_time( 'mysql' ), 
@@ -821,15 +821,15 @@ function jjreader_new_subscription($siteurl, $feedurl, $sitetitle, $feedtype){
 				'feedtype' => $feedtype,
 			 ) );
 		if($rows_affected == false){
-			jjreader_log("Could not insert subscription info into database.");
+			yarns_reader_log("Could not insert subscription info into database.");
 			echo "Could not insert subscription info into database.";
 			die("Could not insert subscription info into database.");
 		}else{
-			jjreader_log("Success! Added subscription: ". $feedurl. " @ ". $sitetitle);
+			yarns_reader_log("Success! Added subscription: ". $feedurl. " @ ". $sitetitle);
 			echo "Success! Added subscription: ". $feedurl. " @ ". $sitetitle;
 		}
 	}else{
-		jjreader_log("You are already subscribed to " . $feedurl);
+		yarns_reader_log("You are already subscribed to " . $feedurl);
 		echo "You are already subscribed to " . $feedurl;
 	}
 	wp_die(); // this is required to terminate immediately and return a proper response
@@ -838,8 +838,8 @@ function jjreader_new_subscription($siteurl, $feedurl, $sitetitle, $feedtype){
 /*
 ** Post a response to an item from the feed
 */
-add_action( 'wp_ajax_jjreader_response', 'jjreader_response' );
-function jjreader_response ($response_type, $in_reply_to, $reply_to_title, $reply_to_content, $title, $content, $feed_item_id){	
+add_action( 'wp_ajax_yarns_reader_response', 'yarns_reader_response' );
+function yarns_reader_response ($response_type, $in_reply_to, $reply_to_title, $reply_to_content, $title, $content, $feed_item_id){	
 	$response_type = $_POST['response_type'];
 	$in_reply_to = $_POST['in_reply_to'];
 	$reply_to_title = $_POST['reply_to_title'];
@@ -848,7 +848,7 @@ function jjreader_response ($response_type, $in_reply_to, $reply_to_title, $repl
 	$post_content = $_POST['content'];
 	$feed_item_id = $_POST['feed_item_id'];
 
-	jjreader_log("Response: " . $response_type . " — " . $in_reply_to);
+	yarns_reader_log("Response: " . $response_type . " — " . $in_reply_to);
 
 	//If the post has a title, then we will use the title for display. If not, use the url
 	// for display
@@ -879,7 +879,7 @@ function jjreader_response ($response_type, $in_reply_to, $reply_to_title, $repl
 		$post_kind = "like";
 	} 
 
-	//jjreader_log("posting response");
+	//yarns_reader_log("posting response");
 
 	/* 
 	Note regarding post_status:
@@ -895,7 +895,7 @@ function jjreader_response ($response_type, $in_reply_to, $reply_to_title, $repl
 		'post_status' => 'draft',
 	);
 	$the_post_id = wp_insert_post( $my_post );
-	jjreader_log(" response posted: " . $the_post_id);
+	yarns_reader_log(" response posted: " . $the_post_id);
 	//__update_post_meta( $the_post_id, 'my-custom-field', 'my_custom_field_value' );
 	
 	// Set the post format once the post has been created 
@@ -909,13 +909,13 @@ function jjreader_response ($response_type, $in_reply_to, $reply_to_title, $repl
 	// Set the appropriate response tag for the feed reader item
 	global $wpdb;
 	// Start at post 0, show 15 posts per page
-	//$table_following = $wpdb->prefix . "jjreader_posts";
+	//$table_following = $wpdb->prefix . "yarns_reader_posts";
 	if ($response_type == "like"){
-		$wpdb->update($wpdb->prefix . 'jjreader_posts', array('liked'=>get_permalink($the_post_id)), array('id'=>$feed_item_id));
+		$wpdb->update($wpdb->prefix . 'yarns_reader_posts', array('liked'=>get_permalink($the_post_id)), array('id'=>$feed_item_id));
 	} else if ($response_type == "reply") {
-		$wpdb->update($wpdb->prefix . 'jjreader_posts', array('replied'=>get_permalink($the_post_id)), array('id'=>$feed_item_id));
+		$wpdb->update($wpdb->prefix . 'yarns_reader_posts', array('replied'=>get_permalink($the_post_id)), array('id'=>$feed_item_id));
 	} else if ($response_type == "rsvp") {
-		$wpdb->update($wpdb->prefix . 'jjreader_posts', array('rsvped'=>get_permalink($the_post_id)), array('id'=>$feed_item_id));
+		$wpdb->update($wpdb->prefix . 'yarns_reader_posts', array('rsvped'=>get_permalink($the_post_id)), array('id'=>$feed_item_id));
 	}
 	
 	echo get_permalink($the_post_id);
@@ -929,11 +929,11 @@ function jjreader_response ($response_type, $in_reply_to, $reply_to_title, $repl
 /*
 ** Identify and return feeds at a given url 
 */
-add_action( 'wp_ajax_jjreader_findFeeds', 'jjreader_findFeeds' );
-//add_action( 'wp_ajax_read_me_later', array( $this, 'jjreader_new_subscription' ) );
-function jjreader_findFeeds($siteurl){
+add_action( 'wp_ajax_yarns_reader_findFeeds', 'yarns_reader_findFeeds' );
+//add_action( 'wp_ajax_read_me_later', array( $this, 'yarns_reader_new_subscription' ) );
+function yarns_reader_findFeeds($siteurl){
 	$siteurl = $_POST['siteurl'];
-	jjreader_log("Searching for feeds and site title at ". $siteurl);
+	yarns_reader_log("Searching for feeds and site title at ". $siteurl);
 
 	$html = file_get_contents($siteurl); //get the html returned from the following url
 	$dom = new DOMDocument();
@@ -1002,13 +1002,13 @@ function jjreader_findFeeds($siteurl){
 /*
 ** Unsubscribe from a feed
 */
-add_action( 'wp_ajax_jjreader_unsubscribe', 'jjreader_unsubscribe' );
-function jjreader_unsubscribe ($feed_id){	
-//$wpdb->update($wpdb->prefix . 'jjreader_posts', array('liked'=>get_permalink($the_post_id)), array('id'=>$feed_item_id));
+add_action( 'wp_ajax_yarns_reader_unsubscribe', 'yarns_reader_unsubscribe' );
+function yarns_reader_unsubscribe ($feed_id){	
+//$wpdb->update($wpdb->prefix . 'yarns_reader_posts', array('liked'=>get_permalink($the_post_id)), array('id'=>$feed_item_id));
 //$wpdb->delete( 'table', array( 'ID' => 1 ) );
 	$feed_id = $_POST['feed_id'];
 	global $wpdb;
-	$unsubscribe = $wpdb->delete( $wpdb->prefix . "jjreader_following", array( 'ID' => $feed_id ) );
+	$unsubscribe = $wpdb->delete( $wpdb->prefix . "yarns_reader_following", array( 'ID' => $feed_id ) );
 	echo $unsubscribe;
 	wp_die();
 }
@@ -1017,11 +1017,11 @@ function jjreader_unsubscribe ($feed_id){
 /*
 ** Aggregator function (run using cron job or by refresh button)
 */
-add_action( 'wp_ajax_jjreader_aggregator', 'jjreader_aggregator' );
-function jjreader_aggregator() {
-	jjreader_log("aggregator was run");
+add_action( 'wp_ajax_yarns_reader_aggregator', 'yarns_reader_aggregator' );
+function yarns_reader_aggregator() {
+	yarns_reader_log("aggregator was run");
 	global $wpdb;
-	$table_following = $wpdb->prefix . "jjreader_following";
+	$table_following = $wpdb->prefix . "yarns_reader_following";
 	//Iterate through each item in the 'following' table.
 	foreach( $wpdb->get_results("SELECT * FROM ".$table_following.";") as $key => $row) {
 		$feedurl = $row->feedurl;
@@ -1029,27 +1029,27 @@ function jjreader_aggregator() {
 		$sitetitle = $row->sitetitle;
 		$siteurl = $row->siteurl;
 		$feedid = $row->id;
-		jjreader_log("checking for new posts in ". $feedurl);
+		yarns_reader_log("checking for new posts in ". $feedurl);
 
 		/****   RSS FEEDS ****/
 		if (isRss($feedtype)){
-			//jjreader_log ($feedurl . " is an rss feed (or atom, etc)");
+			//yarns_reader_log ($feedurl . " is an rss feed (or atom, etc)");
 
-			$feed = jjreader_fetch_feed($feedurl,$feedtype);
+			$feed = yarns_reader_fetch_feed($feedurl,$feedtype);
 		
 			if(is_wp_error($feed)){
-				//jjreader_log($feed->get_error_message());
+				//yarns_reader_log($feed->get_error_message());
 				trigger_error($feed->get_error_message());
-				jjreader_log("Feed read Error: ".$feed->get_error_message());
+				yarns_reader_log("Feed read Error: ".$feed->get_error_message());
 			} else {
-				//jjreader_log("Feed read success.");
+				//yarns_reader_log("Feed read success.");
 			}
 			$feed->enable_cache(false);
 			$feed->strip_htmltags(false);   
 			$items = $feed->get_items();
 			usort($items,'date_sort');
 			foreach ($items as $item){
-				//jjreader_log("got ".$item->get_title()." from ". $item->get_feed()->get_title()."<br/>");
+				//yarns_reader_log("got ".$item->get_title()." from ". $item->get_feed()->get_title()."<br/>");
 				$title = $item->get_title();
 
 
@@ -1069,15 +1069,15 @@ function jjreader_aggregator() {
 				$photo='';
 				$type='rss';
 				try{
-					jjreader_add_feeditem($feedid,$title,$summary,$content,$published,$updated,$authorname,$authorurl,$avurl,$permalink,$location,$photo,$type,$siteurl,$sitetitle);
+					yarns_reader_add_feeditem($feedid,$title,$summary,$content,$published,$updated,$authorname,$authorurl,$avurl,$permalink,$location,$photo,$type,$siteurl,$sitetitle);
 				}catch(Exception $e){
-					jjreader_log("Exception occured: ".$e->getMessage());
+					yarns_reader_log("Exception occured: ".$e->getMessage());
 				}
 			}
 
 		} /****  H-FEEDS ****/ 
 		elseif ($feedtype == "h-feed"){
-			$feed = jjreader_fetch_hfeed($feedurl,$feedtype);
+			$feed = yarns_reader_fetch_hfeed($feedurl,$feedtype);
 			foreach ($feed as $item){
 				
 				$title = $item['name'];
@@ -1101,20 +1101,20 @@ function jjreader_aggregator() {
 				
 
 				try{
-					jjreader_add_feeditem($feedid,$title,$summary,$content,$published,$updated,$authorname,$authorurl,$avurl,$permalink,$location,$photo,$type,$siteurl,$sitetitle,$syndication,$in_reply_to);
-					//jjreader_add_feeditem($permalink, $title, $content, $authorname, $authorurl, $time, $avurl, $siteurl, $feedurl, $type);
+					yarns_reader_add_feeditem($feedid,$title,$summary,$content,$published,$updated,$authorname,$authorurl,$avurl,$permalink,$location,$photo,$type,$siteurl,$sitetitle,$syndication,$in_reply_to);
+					//yarns_reader_add_feeditem($permalink, $title, $content, $authorname, $authorurl, $time, $avurl, $siteurl, $feedurl, $type);
 				}catch(Exception $e){
-					jjreader_log("Exception occured: ".$e->getMessage());
+					yarns_reader_log("Exception occured: ".$e->getMessage());
 				}
 			}
-			//jjreader_log ($feedurl . " is an h-feed");
+			//yarns_reader_log ($feedurl . " is an h-feed");
 		}
-		remove_filter( 'wp_feed_cache_transient_lifetime', 'jjreader_feed_time' );
+		remove_filter( 'wp_feed_cache_transient_lifetime', 'yarns_reader_feed_time' );
 	}
 	// Store the time of the this update
 	$update_time = date('Y-m-d H:i:s', time());
-	jjreader_log("Aggregator finished at ". $update_time);
-	update_option( 'jjreader_last_updated', $update_time);
+	yarns_reader_log("Aggregator finished at ". $update_time);
+	update_option( 'yarns_reader_last_updated', $update_time);
 
 	wp_die(); // this is required to terminate immediately and return a proper response
 }
@@ -1122,10 +1122,10 @@ function jjreader_aggregator() {
 /*
 ** Fetch an RSS FEED and return its content
 */
-function jjreader_fetch_feed($url,$feedtype) {
+function yarns_reader_fetch_feed($url,$feedtype) {
 	require_once (ABSPATH . WPINC . '/class-feed.php');
 	$feed = new SimplePie();
-	//jjreader_log("Url is fetchable");
+	//yarns_reader_log("Url is fetchable");
 	$feed->set_feed_url($url);
 	$feed->set_cache_class('WP_Feed_Cache');
 	$feed->set_file_class('WP_SimplePie_File');
@@ -1135,17 +1135,17 @@ function jjreader_fetch_feed($url,$feedtype) {
 	$feed->init();
 	$feed->handle_content_type();
 	
-	//jjreader_log("Feed:".print_r($feed,true));
+	//yarns_reader_log("Feed:".print_r($feed,true));
 
 	if ( $feed->error() )
 		$errstring = implode("\n",$feed->error());
 		//if(strlen($errstring) >0){ $errstring = $feed['data']['error'];}
 		if(stristr($errstring,"XML error")){
-			jjreader_log('simplepie-error-malfomed: '.$errstring.'<br/><code>'.htmlspecialchars ($url).'</code>');
+			yarns_reader_log('simplepie-error-malfomed: '.$errstring.'<br/><code>'.htmlspecialchars ($url).'</code>');
 		}elseif(strlen($errstring) >0){
-			jjreader_log('simplepie-error: '.$errstring);
+			yarns_reader_log('simplepie-error: '.$errstring);
 		}else{
-			//jjreader_log('simplepie-error-empty: '.print_r($feed,true).'<br/><code>'.htmlspecialchars ($url).'</code>');
+			//yarns_reader_log('simplepie-error-empty: '.print_r($feed,true).'<br/><code>'.htmlspecialchars ($url).'</code>');
 		}
 	return $feed;
 }
@@ -1153,7 +1153,7 @@ function jjreader_fetch_feed($url,$feedtype) {
 /*
 ** Fetch an H-FEED and return its content
 */
-function jjreader_fetch_hfeed($url,$feedtype) {
+function yarns_reader_fetch_hfeed($url,$feedtype) {
 	//Parse microformats at the feed-url
 	$mf = Mf2\fetch($url);
 	//Identify the h-feed within the parsed MF2
@@ -1198,9 +1198,9 @@ function jjreader_fetch_hfeed($url,$feedtype) {
 	//At this point, only proceed if h-feed has been found
 	if ($hfeed == "") {
 		//do nothing
-		jjreader_log("no h-feed found");
+		yarns_reader_log("no h-feed found");
 	} else {
-		//jjreader_log("Parsing h-feed at: ".$hpath);
+		//yarns_reader_log("Parsing h-feed at: ".$hpath);
 		$site_url = $url;
 		$counter = 0;
 
@@ -1233,8 +1233,8 @@ function jjreader_fetch_hfeed($url,$feedtype) {
 
 			//handle h-entry
 			if ("{$item['type'][0]}" == "h-entry"){
-				//jjreader_log ("found h-entry");
-				//jjreader_log("{$item['properties']['url'][0]}");
+				//yarns_reader_log ("found h-entry");
+				//yarns_reader_log("{$item['properties']['url'][0]}");
 				$item_content = "{$item['properties']['content'][0]['html']}";
 				$item_content_plain = "{$item['properties']['content'][0]['value']}";
 
@@ -1244,8 +1244,8 @@ function jjreader_fetch_hfeed($url,$feedtype) {
 
 			//handle h-event
 			if ("{$item['type'][0]}" == "h-event"){
-				//jjreader_log ("found h-event");
-				//jjreader_log("{$item['properties']['url'][0]}");
+				//yarns_reader_log ("found h-event");
+				//yarns_reader_log("{$item['properties']['url'][0]}");
 
 				$item_featured = "{$item['properties']['featured'][0]}";
 				$item_content = "";
@@ -1257,7 +1257,7 @@ function jjreader_fetch_hfeed($url,$feedtype) {
 			}
 
 			// Log the parsed h-feed  for debugging
-			//jjreader_log($log_entry);
+			//yarns_reader_log($log_entry);
 
 
 			//Remove the title if it is equal to the post content (e.g. asides, notes, microblogs)
@@ -1287,7 +1287,7 @@ function jjreader_fetch_hfeed($url,$feedtype) {
 			
 		}
 
-		//jjreader_log("hfeed items = " . json_decode($hfeed_items));
+		//yarns_reader_log("hfeed items = " . json_decode($hfeed_items));
 
 		return $hfeed_items;
 	}
@@ -1304,26 +1304,26 @@ function jjreader_fetch_hfeed($url,$feedtype) {
 
 
 function findPhotos($html){
-	//jjreader_log("Finding photos...");
+	//yarns_reader_log("Finding photos...");
 	$dom = new DOMDocument;
 	$dom->loadHTML($html);
 	foreach ($dom->getElementsByTagName('img') as $node) {
 		/*$src= $node->getAttribute( 'src' );
 		$alt = $node->getAttribute( 'alt' );
-		//jjreader_log("src = ." . $src . " | alt = " . $alt);
+		//yarns_reader_log("src = ." . $src . " | alt = " . $alt);
 		$returnArray[] = array("src"=>$src, "alt"=>$alt);		
 		*/
 		// SImplying to just return url for image
 		$returnArray[] = $node->getAttribute('src');
 	}
 	return $returnArray;
-	//jjreader_log(serialize($returnArray));
+	//yarns_reader_log(serialize($returnArray));
 } 
 
 //Log changes to the database (adding sites, fetching posts, etc.)
-function jjreader_log($message){
+function yarns_reader_log($message){
 	global $wpdb;
-	$table_name = $wpdb->prefix . 'jjreader_log';
+	$table_name = $wpdb->prefix . 'yarns_reader_log';
 
 	$wpdb->insert( 
 		$table_name, 
@@ -1363,7 +1363,7 @@ function clean_the_title($title,$content,$content_plain=''){
 		$clean_content = htmlentities($clean_content, ENT_QUOTES); // Convert quotation marks to HTML entities
 		$clean_content = str_replace("&nbsp;", "", $clean_content); // replace $nbsp; with a space character
 		$clean_content = str_replace(array("\r", "\n"), '', $clean_content); // remove line breaks from CONTENT
-		//jjreader_log("COMPARISON #2: plain content: [". $clean_content . "] and title: [".$clean_title."]");
+		//yarns_reader_log("COMPARISON #2: plain content: [". $clean_content . "] and title: [".$clean_title."]");
 		if (strpos($clean_content,$clean_title)===0 ){
 			$title="";
 		} 
@@ -1402,12 +1402,12 @@ function User_datetime($datetime){
 **   Runs upon deactivating the plugin
 **
 */
-function jjreader_deactivate() {
+function yarns_reader_deactivate() {
 	// on deactivation remove the cron job 
-	if ( wp_next_scheduled( 'jjreader_generate_hook' ) ) {
-		wp_clear_scheduled_hook( 'jjreader_generate_hook' );
+	if ( wp_next_scheduled( 'yarns_reader_generate_hook' ) ) {
+		wp_clear_scheduled_hook( 'yarns_reader_generate_hook' );
 	}
-	jjreader_log("deactivated plugin");
+	yarns_reader_log("deactivated plugin");
 }
 
 
@@ -1418,18 +1418,18 @@ function jjreader_deactivate() {
 */
 
 /* Functions to run upon installation */ 
-register_activation_hook(__FILE__,'jjreader_install');
-register_activation_hook(__FILE__,'jjreader_create_tables');
-add_filter('cron_schedules','jjreader_cron_definer');
-add_action( 'jjreader_generate_hook', 'jjreader_aggregator' );
+register_activation_hook(__FILE__,'yarns_reader_install');
+register_activation_hook(__FILE__,'yarns_reader_create_tables');
+add_filter('cron_schedules','yarns_reader_cron_definer');
+add_action( 'yarns_reader_generate_hook', 'yarns_reader_aggregator' );
 
 /* Functions to run upon deactivation */ 
-register_deactivation_hook( __FILE__, 'jjreader_deactivate' );
+register_deactivation_hook( __FILE__, 'yarns_reader_deactivate' );
 
 
 
 /* Check if the database version has changed when plugin is updated */ 
-add_action( 'plugins_loaded', 'jjreader_update_db_check' );
+add_action( 'plugins_loaded', 'yarns_reader_update_db_check' );
 
 /* Hook to display admin notice */ 
 /*
