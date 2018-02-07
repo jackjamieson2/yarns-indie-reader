@@ -26,7 +26,8 @@
 
 /* 
  *	Portions of code are modified from Ashton McAllan's WhisperFollow plugin. 
- *	(http://acegiak.machinespirit.net/2012/01/25/whisperfollow/).
+ *	- http://acegiak.machinespirit.net/2012/01/25/whisperfollow/
+ 	- https://github.com/acegiak/WhisperFollow.
  */ 
 
 /*
@@ -66,10 +67,24 @@ function jjreader_enqueue_scripts() {
 	wp_register_script( 'jjreader_js', plugin_dir_url( __FILE__ ).'js/jjreader.js', array('jquery'), null, true);
 
 	wp_enqueue_style( 'jjreader-style', plugin_dir_url( __FILE__ ).'css/jjreader.css' );
+
+	// also enqueue the css for the jjreader_admin page in the dashboard
+	wp_enqueue_style( 'jjreader-style', plugin_dir_url( __FILE__ ).'css/jjreader.css' );
+
 	//Add ajax support for the jjreader_js script
 	wp_localize_script( 'jjreader_js', 'jjreader_ajax', array(
 		'ajax_url' => admin_url( 'admin-ajax.php' )
 	));
+}
+
+/* Enqueue scripts and styles for the jjreader_admin page */
+add_action( 'admin_enqueue_scripts', 'jjreader_admin_enqueue_scripts' );
+function jjreader_admin_enqueue_scripts($hook) {
+    if ( 'settings_page_jjreader_settings' != $hook ) {
+        return;
+    }
+
+    wp_enqueue_style( 'jjreader-style', plugin_dir_url( __FILE__ ).'css/jjreader.css' );
 }
 
 /* Define what page should be displayed when "JJ Reader Settings" is clicked in the dashboard*/
@@ -518,13 +533,13 @@ function jjreader_display_page($pagenum){
 			$the_page .= '<div class="jjreader-feed-item" data-id="'.$item->id.'">'; // container for each feed item
 		
 			$the_page .= '<div class="jjreader-item-meta">'; // container for meta 
-			$the_page .= '<a class="jjreader-item-authorname" href="'.$item->siteurl.'">'.$item->sitetitle.'</a> '; // authorname
-			$the_page .= '<a class="jjreader-item-date" href="'.$item->permalink.'">at '.user_datetime($item->published).'</a>'; // date/permalink
+			$the_page .= '<a class="jjreader-item-authorname" href="'.$item->siteurl.'" target="_blank">'.$item->sitetitle.'</a> '; // authorname
+			$the_page .= '<a class="jjreader-item-date" href="'.$item->permalink.'" target="_blank">at '.user_datetime($item->published).'</a>'; // date/permalink
 			//$the_page .= '<span class="jjreader-item-type">'.$display_type.'</span>'; // display type
 			
 			$the_page .= '</div><!--.jjreader-item-meta-->';
 			if ($item->title !=""){
-				$the_page .= '<a class="jjreader-item-title" href="'.$item->permalink.'">'.$item->title.'</a>';
+				$the_page .= '<a class="jjreader-item-title" href="'.$item->permalink.'" target="_blank">'.$item->title.'</a>';
 			}
 
 			$tidy = new tidy();
@@ -551,7 +566,7 @@ function jjreader_display_page($pagenum){
 			
 			$the_page .='<div class="jjreader-item-summary">';
 			if (strlen($item->in_reply_to)>0){
-				$the_page .= '<div class="jjreader-item-reply">reply to post at <a href = "'.$item->in_reply_to.'">'.parse_url($item->in_reply_to,PHP_URL_HOST).'</a></div>';
+				$the_page .= '<div class="jjreader-item-reply">reply to post at <a href = "'.$item->in_reply_to.'" target="_blank">'.parse_url($item->in_reply_to,PHP_URL_HOST).'</a></div>';
 			}
 			// Clean up the summary using tidy()
 
@@ -632,7 +647,7 @@ function jjreader_display_full_content($id){
 
 		$the_page .='<div class="jjreader-item-content">';
 		if (strlen($item->in_reply_to)>0){
-				$the_page .= '<div class="jjreader-item-reply">reply to post at <a href = "'.$item->in_reply_to.'">'.parse_url($item->in_reply_to,PHP_URL_HOST).'</a></div>';
+				$the_page .= '<div class="jjreader-item-reply">reply to post at <a href = "'.$item->in_reply_to.'" target="_blank">'.parse_url($item->in_reply_to,PHP_URL_HOST).'</a></div>';
 
 			}
 		$the_page .= $item->content;
@@ -648,7 +663,7 @@ function jjreader_display_full_content($id){
 			$the_page .= '<div class="jjreader-item-syndication">';
 			foreach($syndication_items as $item){
 
-				$the_page .= '<a href ="'.$item.'">'.parse_url($item,PHP_URL_HOST) .'</span>';
+				$the_page .= '<a href ="'.$item.'" >'.parse_url($item,PHP_URL_HOST) .'</span>';
 			}
 			$the_page .= '</div>';
 		}

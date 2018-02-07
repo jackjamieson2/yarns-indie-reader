@@ -299,3 +299,28 @@ display:inline-block;
 .ui-state-highlight {
 	font-style:italic;
 }
+
+
+
+/*
+** Styles for the admin screen
+*/
+
+#jjreader-admin .jjreader-log {
+	height:15rem;
+	overflow-y:scroll;
+	background:white;
+	max-width:800px;
+
+}
+
+#jjreader-admin .jjreader-log .jjreader-log-item {
+	padding: .2rem;
+	border-bottom: 1px solid #e7e7e7;
+}
+
+
+
+#jjreader-admin .jjreader-log .jjreader-log-item-time {
+	margin-right: 1em;
+} 

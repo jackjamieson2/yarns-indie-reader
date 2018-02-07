@@ -1,60 +1,33 @@
 <?php 
 	/* Display plugin information on the admin screen */ 
 	
-        
+    defined( 'ABSPATH' ) or die( 'No script kiddies please!' );
 
-
-    if($_POST['jjreader_hidden'] == 'Y') {
-    	// Store the old feed location for reference
-    	$old_feedlocation = get_option('jjreader_feedlocation');
-        //Send form data
-        $feedlocation = $_POST['jjreader_feedlocation'];
-        update_option('jjreader_feedlocation', $feedlocation);
-        // Create rename/following page if the feedlocation has changed
-        if ($old_feedlocation != $feedlocation){
-	        create_following_page();
-	    }
-        ?>
-        <div class="updated"><p><strong><?php _e('Options saved.' ); ?></strong></p></div>
-        <?php
-    } else {
-        $feedlocation = get_option('jjreader_feedlocation');
-        //Normal page display
-    }
 ?>
 
 
 <div id = "jjreader-admin">
+
+
 <div class="wrap">
     <?php    
-    	echo "<h2> JJ Reader Settings </h2>"; 
+    	echo "<h2> Yarns Indie Reader </h2>"; 
     ?>
     <div>
-        <p>Thank you for installing JJ Reader!<p>
-        <p><strong>Getting started:</strong> To use JJ Reader, create a page with the content "[jjreader_page]" (no quotation marks). <br>
+        <p>Thank you for installing Yarns Indie Reader!<p>
+        <p><strong>Getting started:</strong> To use Yarns Indie Reader, create a page with the content "[jjreader_page]" (no quotation marks). <br>
             When you view that page, you will see the reader interface.  From there you can subscribe to blogs and websites, and post replies.<p>
+
+        <p>Questions? Please contact Jack Jamieson (<a href="http://jackjamieson.net" target="_blank"> jackjamieson.net</a>)</p>
 
 
     </div>
     <div> <strong>Database version: </strong>  <?php echo get_option( "jjreader_db_version" ); ?></div>
-
-    
- 
-    <form name="jjreader-form" method="post" action="<?php echo str_replace( '%7E', '~', $_SERVER['REQUEST_URI']); ?>">
-        <input type="hidden" name="jjreader_hidden" value="Y">
-        <?php    echo "<h4>" . __( 'Feed location:', 'jjreader_feedlocation' ) . "</h4>"; ?>
-        <p><?php _e("'Following' page: " ); ?><?php echo site_url(); ?>/ <input type="text" name="jjreader_feedlocation" value="<?php echo $old_feedlocation; ?>" size="30"><?php _e(" e.g., following" ); ?></p>
-         
-     
-        <p class="submit">
-        <input type="submit" name="Submit" value="<?php _e('Update Options', 'jjreader_feedlocation' ) ?>" />
-        </p>
-    </form>
 </div>
 
-
-<div class = "jjreader_log">
 <h2> Most recent 100 items from log </h2>
+
+<div class = "jjreader-log">
 <?php 
 
 	// Access databsae
@@ -66,7 +39,7 @@
 	$items = $wpdb->get_results(
 		'SELECT * 
 		FROM  `'.$wpdb->prefix . 'jjreader_log` 
-		ORDER BY  `date` DESC 
+		ORDER BY  `ID` DESC 
 		LIMIT '.($fpage*$length).' , '.$length.';'
 	);
 	
@@ -74,7 +47,8 @@
 	if ( !empty( $items ) ) { 
 		foreach ( $items as $item ) {
 			echo '<div class="jjreader-log-item">';
-			echo $item->date.': '.$item->log;
+            echo '<span class="jjreader-log-item-time">'.$item->date.'</span>';
+            echo '<span class="jjreader-log-item-content">'.$item->log.'</span>';
 			echo '</div>'; 
 		}
 	}
