@@ -80,6 +80,7 @@
 #yarns_reader .yarns_reader-feed-item{
 	padding: .5rem;
 	margin: .8rem 0;
+	position:relative;
 }
 
 #yarns_reader-subscription-list {
@@ -130,17 +131,23 @@
 
 /* The second meta box, at the BOTTOM of each item */
 .yarns_reader-feed-item .yarns_reader-item-meta2{
-	display:inline-block;
-	width:50%;
+	
+	
 	font-size:small;
+	
 }
 .yarns_reader-feed-item .yarns_reader-item-meta2:not(:empty) {
 		border-top: 1px solid #ddd;
 		margin-top: 1em;
+
 }
 
 .yarns_reader-feed-item .yarns_reader-item-location::before {
 	content:"📍 ";
+}
+
+.yarns_reader-feed-item .yarns_reader-item-location {
+
 }
 
 .yarns_reader-feed-item .yarns_reader-item-syndication a {
@@ -189,13 +196,11 @@
 }
 
 .yarns_reader-feed-item .yarns_reader-item-response {
-	display:inline-block;
-	width:50%;
 	text-align:right;
 }
 
 .yarns_reader-feed-item .yarns_reader-response-controls {
-display:inline-block;
+
 	}
 
 .yarns_reader-feed-item .yarns_reader-response-controls button{
@@ -220,8 +225,18 @@ display:inline-block;
 .yarns_reader-feed-item  .yarns_reader-reply.yarns_reader-response-exists::before {
 	content:"See reply: 🔗";
 }
+.yarns_reader-feed-item .yarns_reader-reply-input {
+	
+}
 
+.yarns_reader-feed-item .yarns_reader-reply-title {
+	width:99%;
+}
 
+.yarns_reader-feed-item .yarns_reader-reply-text {
+	width:99%;
+	resize:vertical;
+}
 
 .yarns_reader-feed-item  .yarns_reader-replies {
 

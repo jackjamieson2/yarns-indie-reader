@@ -585,6 +585,13 @@ function yarns_reader_display_page($pagenum){
 
 			$the_page .='</div><!--.yarns_reader-item-summary-->'; 
 
+			
+
+			
+
+			$the_page .= '<div class="yarns_reader-item-response">'.yarns_reader_reply_actions($item->posttype,$item->liked,$item->replied,$item->rsvped);
+			$the_page .= '</div><!--.yarns_reader-item-response-->';
+
 			$the_page .= '<div class="yarns_reader-item-meta2">'; // container for meta2
 			if (strlen($item->location)>0){
 				$the_page .= '<div class="yarns_reader-item-location">'.$item->location.'</div>'; // display type
@@ -601,11 +608,7 @@ function yarns_reader_display_page($pagenum){
 			}
 
 			$the_page .= '</div><!--.yarns_reader-item-meta2-->';
-
 			
-
-			$the_page .= '<div class="yarns_reader-item-response">'.yarns_reader_reply_actions($item->posttype,$item->liked,$item->replied,$item->rsvped);
-			$the_page .= '</div><!--.yarns_reader-item-response-->';
 
 			$the_page .= '</div><!--.yarns_reader-feed-item-->';	
 		}
