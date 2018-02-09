@@ -19,8 +19,8 @@
 
             
 
-            When you view that page, you will see the reader interface.  From there you can subscribe to blogs and websites, and post replies. <br>
-            <strong>Important:</strong> Replies and likes are saved as drafts.  This is temporary because this plugin is in its early stages.
+            When you view that page, you will see the reader interface.  From there you can subscribe to blogs and websites, and post replies. 
+            
             <br><br>
 
             Please note that you must be logged in to your site to view the reader, and must have author, editor, or admin permissions to modify subscriptions or post replies.
@@ -29,10 +29,7 @@
 
             <p>
 
-    	<p>
-    		Yarns Indie Reader is inspire
-    	</p>
-
+    	
         <p>Questions? Please contact Jack Jamieson (<a href="http://jackjamieson.net" target="_blank"> jackjamieson.net</a>)</p>
 
 
