@@ -122,6 +122,23 @@
 	color:#888;
 }
 
+.yarns_reader-feed-item .yarns_reader-item-authorav {
+	overflow:hidden;
+	width: 50px;
+	height: 50px;
+	display: inline-block;
+	position: relative;
+	box-shadow: 0px 0px 3px rgba(35, 35, 35, 0.36);
+	margin-right:0.75em;
+}
+
+.yarns_reader-feed-item .yarns_reader-item-authorav img{
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+}
+
 .yarns_reader-feed-item  a.yarns_reader-item-authorname {
 	font-weight:bold;
 	font-size:1rem;

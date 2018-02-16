@@ -36,6 +36,8 @@
 
 defined( 'ABSPATH' ) or die( 'No script kiddies please!' );
  
+
+
 // Require the mf2 parser only if it has not already been added by another plugin
 if ( ! class_exists( 'Mf2\Parser' ) ) {
     require_once plugin_dir_path( __FILE__ ) .  'lib/Mf2/Parser.php'; // For parsing h-feed
@@ -514,7 +516,11 @@ function yarns_reader_display_page($pagenum){
 			$the_page .= '<div class="yarns_reader-feed-item" data-id="'.$item->id.'">'; // container for each feed item
 		
 			$the_page .= '<div class="yarns_reader-item-meta">'; // container for meta 
-			$the_page .= '<a class="yarns_reader-item-authorname" href="'.$item->siteurl.'" target="_blank">'.$item->sitetitle.'</a> '; // authorname
+			$the_page .= '<a class="yarns_reader-item-authorname" href="'.$item->siteurl.'" target="_blank">';
+			if ($item->authoravurl!=''){
+				$the_page .= '<div class="yarns_reader-item-authorav"> <img src="'.$item->authoravurl.'"></div>';
+			} 
+			$the_page .= $item->sitetitle.'</a> '; // authorname
 			$the_page .= '<a class="yarns_reader-item-date" href="'.$item->permalink.'" target="_blank">at '.user_datetime($item->published).'</a>'; // date/permalink
 			//$the_page .= '<span class="yarns_reader-item-type">'.$display_type.'</span>'; // display type
 			
@@ -676,17 +682,13 @@ function yarns_reader_display_full_content($id){
 /* Add a post to the yarns_reader_posts table in the database */
 function yarns_reader_add_feeditem($feedid,$title,$summary,$content,$published=0,$updated=0,$authorname='',$authorurl='',$avurl='',$permalink,$location,$photo,$type,$siteurl,$sitetitle,$syndication='',$in_reply_to=''){
 
-	//yarns_reader_log("adding post: ".$permalink.": ".$title);
 	global $wpdb;
 
 
-	//yarns_reader_log("published = " . $published);
 	if($published < 1){
 		$published = time();
 	}
-	//yarns_reader_log("published2 = " . $published);
 	$published = date('Y-m-d H:i:s',$published);
-	//yarns_reader_log("published3 = " . $published);
 	$updated = date('Y-m-d H:i:s',$updated);
 
 	// If there is no featured photo defined, search for a first image in the content
@@ -704,8 +706,6 @@ function yarns_reader_add_feeditem($feedid,$title,$summary,$content,$published=0
 		}
 	} 
 	*/
-	
-
 	
 
 	
@@ -773,7 +773,7 @@ function yarns_reader_add_feeditem($feedid,$title,$summary,$content,$published=0
 
 			die("could not insert post into database!" .$permalink.": ".$title);
 		}else{
-			yarns_reader_log("added ".$permalink.": ".$title);
+			//yarns_reader_log("added ".$permalink.": ".$title);
 		}
 	}else{
 		//yarns_reader_log("post already exists: " .$permalink.": ".$title);
@@ -1079,7 +1079,9 @@ function yarns_reader_aggregator() {
 				$photo=$item['photo'];
 				$syndication = $item['syndication'];
 				$in_reply_to = $item['in-reply-to'];
-				//$location = $item['location'];
+				
+				$authorurl = $item['author_url'];
+				$avurl = $item['avurl'];
 				
 				$siteurl=$item['siteurl'];
 				$feedurl = $url;
@@ -1225,7 +1227,7 @@ function yarns_reader_fetch_hfeed($url,$feedtype) {
 			}
 		}
 
-		yarns_reader_log(json_encode($hfeed_items));
+		//yarns_reader_log(json_encode($hfeed_items));
 		//Fetch each post individually
 		foreach ($hfeed_item_urls as $hfeed_item_url){
 			$mf = Mf2\fetch($hfeed_item_url);
@@ -1235,7 +1237,7 @@ function yarns_reader_fetch_hfeed($url,$feedtype) {
 					"{$item['type'][0]}" == 'h-event' )
 					// Only parse supported types (h-entry, h-event)
 				{ 
-					yarns_reader_log("HFEED LOG: ". $hfeed_item_url . " | " ."{$item['properties']['url'][0]}" ); 
+					//yarns_reader_log("HFEED LOG: ". $hfeed_item_url . " | " ."{$item['properties']['url'][0]}" ); 
 					
 					//Only store an item_name if it is not equal to the content value
 					if ("{$item['properties']['name'][0]}" !="{$item['properties']['content'][0]['value']}" ) {
@@ -1283,8 +1285,29 @@ function yarns_reader_fetch_hfeed($url,$feedtype) {
 						}
 					}
 
-					$item_inreplyto = json_encode("{$item['properties']['in-reply-to'][0]}");
-					$item_author = json_encode("{$item['properties']['author'][0]}");
+					$item_inreplyto = "{$item['properties']['in-reply-to'][0]['value']}";
+/*
+
+$feedid,$title,$summary,$content,$published=0,$updated=0,$authorname='',$authorurl='',$avurl='',$permalink,$location,$photo,$type,$siteurl,$sitetitle,$syndication='',$in_reply_to=''){
+
+*/
+
+					
+					if ("{$item['properties']['author'][0]['type'][0]}" == "h-card"){
+						// get full author h-card
+						$item_author = "{$item['properties']['author'][0]['properties']['name'][0]}";
+						$item_avurl = "{$item['properties']['author'][0]['properties']['photo'][0]}";
+						$item_author_url = "{$item['properties']['author'][0]['properties']['url'][0]}";
+						
+					} else {
+						// just get the author name
+						$item_author = "{$item['properties']['author'][0]}";
+						$item_avurl = '';
+						$item_author_url = '';
+					}
+					//$item_author = "{$item['properties']['author'][0]['type']}";
+
+
 					$item_content = "{$item['properties']['content'][0]['html']}";
 
 
@@ -1298,10 +1321,6 @@ function yarns_reader_fetch_hfeed($url,$feedtype) {
 					if ("{$item['type'][0]}" == "h-event"){
 						
 					}
-
-					// Log the parsed h-feed  for debugging
-					//yarns_reader_log($log_entry);
-
 
 					//Remove the title if it is equal to the post content (e.g. asides, notes, microblogs)
 					$item_name = clean_the_title($item_name,$item_content,$item_content_plain);
@@ -1322,7 +1341,9 @@ function yarns_reader_fetch_hfeed($url,$feedtype) {
 						"in-reply-to"=>$item_inreplyto,
 						"author"=>$item_author,
 						"featured"=>$item_featured,
-						"siteurl"=>$site_url
+						"siteurl"=>$site_url,
+						"author_url"=>$item_author_url,
+						"avurl"=>$item_avurl
 					);
 				}
 			}	
@@ -1345,16 +1366,9 @@ function findPhotos($html){
 	$dom = new DOMDocument;
 	$dom->loadHTML($html);
 	foreach ($dom->getElementsByTagName('img') as $node) {
-		/*$src= $node->getAttribute( 'src' );
-		$alt = $node->getAttribute( 'alt' );
-		//yarns_reader_log("src = ." . $src . " | alt = " . $alt);
-		$returnArray[] = array("src"=>$src, "alt"=>$alt);		
-		*/
-		// SImplying to just return url for image
 		$returnArray[] = $node->getAttribute('src');
 	}
 	return $returnArray;
-	//yarns_reader_log(serialize($returnArray));
 } 
 
 //Log changes to the database (adding sites, fetching posts, etc.)
@@ -1400,7 +1414,7 @@ function clean_the_title($title,$content,$content_plain=''){
 		$clean_content = htmlentities($clean_content, ENT_QUOTES); // Convert quotation marks to HTML entities
 		$clean_content = str_replace("&nbsp;", "", $clean_content); // replace $nbsp; with a space character
 		$clean_content = str_replace(array("\r", "\n"), '', $clean_content); // remove line breaks from CONTENT
-		//yarns_reader_log("COMPARISON #2: plain content: [". $clean_content . "] and title: [".$clean_title."]");
+		
 		if (strpos($clean_content,$clean_title)===0 ){
 			$title="";
 		} 
