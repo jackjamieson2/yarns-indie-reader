@@ -525,9 +525,7 @@ function yarns_reader_display_page($pagenum){
 				// Only show the photo if there is not already a photo in the summary
 				// (This is because some post summaries duplicate photos in the photo property)
 				if (!findPhotos($item->summary)[0]){
-					yarns_reader_log("Photo in the summary?   " . findPhotos($item->summary)[0]);
 					$photos = json_decode($item->photo);
-
 				//if (findPhotos($clean_summary)[0] != $item->photo) {
 					$the_page .='<div class="yarns_reader-item-photo">';
 					$the_page .='<img src="'.$photos[0].'">'; 
@@ -560,7 +558,26 @@ function yarns_reader_display_page($pagenum){
 
 			$the_page .= '<div class="yarns_reader-item-meta2">'; // container for meta2
 			if (strlen($item->location)>0){
-				$the_page .= '<div class="yarns_reader-item-location">'.$item->location.'</div>'; // display type
+				$the_page .= '<div class="yarns_reader-item-location">';
+				$location= json_decode($item->location);
+
+
+				if ($location->url) {
+					$the_page .= '<a class="yarns_reader-item-location-url" href = "'. $location->url . '">';
+					if($location->name){
+						$the_page.=$location->name;
+					}else {
+						$the_page.= $location->url;
+					}
+					$the_page .= '</a>';
+				} else if ($location->name){
+					$the_page .= $location->name;
+				} else {
+					//fallback to plain text location
+					$the_page .= $item->location;
+				}
+
+				$the_page .='</div>';
 			}
 
 			if (strlen($item->syndication)>0){
@@ -574,13 +591,10 @@ function yarns_reader_display_page($pagenum){
 			}
 
 			$the_page .= '</div><!--.yarns_reader-item-meta2-->';
-			
-
 			$the_page .= '</div><!--.yarns_reader-feed-item-->';	
 		}
 		$the_page .= '</div><!--yarns_reader-page-'.$pagenum.'-->';
 		echo $the_page;
-
 	} else {
 		// There are no more items!
 		echo "finished";
@@ -1199,9 +1213,24 @@ function yarns_reader_fetch_hfeed($url,$feedtype) {
 						$item_summary = "{$item['properties']['summary'][0]}";
 						$item_published = strtotime("{$item['properties']['published'][0]}");
 						$item_updated = strtotime("{$item['properties']['updated'][0]}");
-						$item_location = "{$item['properties']['location'][0]['value']}";
+
+
+						if ("{$item['properties']['location'][0]['properties']['name'][0]}"){
+							// get full location h-card
+							$location['name'] = "{$item['properties']['location'][0]['properties']['name'][0]}";
+							$location['url']  = "{$item['properties']['location'][0]['properties']['url'][0]}";
+							$location['latitude']= "{$item['properties']['location'][0]['properties']['latitude'][0]}";
+							$location['longitude']  = "{$item['properties']['location'][0]['properties']['longitude'][0]}";
+							$item_location = json_encode($location);
+
+						} else if ("{$item['properties']['location'][0]['value']}"){
+							// just get the location value
+							$location['name'] = "{$item['properties']['location'][0]['value']}";
+							$item_location = json_encode($location); 
+						}
+
 						//Note that location can be an h-card, but this script just gets the string value
-						$item_url = "{$item['properties']['url'][0]}";
+						$item_url = $hfeed_item_url;
 						$item_uid = "{$item['properties']['uid'][0]}";
 						if ("{$item['properties']['syndication']}"){
 							$syndication =  array();
@@ -1236,7 +1265,7 @@ function yarns_reader_fetch_hfeed($url,$feedtype) {
 
 						$item_inreplyto = "{$item['properties']['in-reply-to'][0]['value']}";
 						
-						if ("{$item['properties']['author'][0]['type'][0]}" == "h-card"){
+						if ("{$item['properties']['author'][0]['type'][0]}" === "h-card"){
 							// get full author h-card
 							$item_author = "{$item['properties']['author'][0]['properties']['name'][0]}";
 							$item_avurl = "{$item['properties']['author'][0]['properties']['photo'][0]}";
