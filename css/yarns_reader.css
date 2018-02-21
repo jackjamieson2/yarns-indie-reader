@@ -181,7 +181,10 @@
 .yarns_reader-feed-item .yarns_reader-item-reply {
     font-size: small;
     margin-bottom: 1em;
+    margin-top:-1em;
+    padding-left: .5em;
 }
+
 
 
 .yarns_reader-feed-item  .yarns_reader-item-title {

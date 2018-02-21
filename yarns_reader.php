@@ -46,9 +46,6 @@ if ( ! class_exists( 'Mf2\Parser' ) ) {
 if ( ! class_exists( 'phpUri' ) ) {
 	require_once plugin_dir_path( __FILE__ ) .  'lib/phpuri.php'; // For converting relative URIs to absolute 
 }
-
-
-
  
 
 global $yarns_reader_db_version;
@@ -57,7 +54,6 @@ $yarns_reader_db_version = "1.8"; // Updated database structure
 	// version 1.6 changed table text format to utf8mb4 (to support emojis and special characters)
 	// version 1.7 add syndication and in_reply_to properties to feed  items
 	// version 1.8 set photo to mediumtext, so it can hold larger arrays
-
 
 
 
@@ -519,6 +515,7 @@ function yarns_reader_display_page($pagenum){
 			$config = array(
      			//'doctype' => 'omit',
      			'quote-marks' =>true,
+     			'show-body-only' => true 
 			);
 
 
@@ -527,7 +524,8 @@ function yarns_reader_display_page($pagenum){
 
 				// Only show the photo if there is not already a photo in the summary
 				// (This is because some post summaries duplicate photos in the photo property)
-				if (!findPhotos($clean_summary)[0]){
+				if (!findPhotos($item->summary)[0]){
+					yarns_reader_log("Photo in the summary?   " . findPhotos($item->summary)[0]);
 					$photos = json_decode($item->photo);
 
 				//if (findPhotos($clean_summary)[0] != $item->photo) {
@@ -540,26 +538,22 @@ function yarns_reader_display_page($pagenum){
 			
 			$the_page .='<div class="yarns_reader-item-summary">';
 			if (strlen($item->in_reply_to)>0){
-				$the_page .= '<div class="yarns_reader-item-reply">reply to post at <a href = "'.$item->in_reply_to.'" target="_blank">'.parse_url($item->in_reply_to,PHP_URL_HOST).'</a></div>';
+				$the_page .= '<div class="yarns_reader-item-reply">↳ in reply to post at <a href = "'.$item->in_reply_to.'" target="_blank">'.parse_url($item->in_reply_to,PHP_URL_HOST).'</a></div>';
 			}
 
 			// Clean up the summary using tidy()
 			$clean_summary = $tidy->repairString($item->summary, $config, 'utf8'); // Need to set to utf8 other quotation marks display incorrectly
-			$the_page .= $clean_summary;
+			$clean_content = $tidy->repairString($item->content, $config, 'utf8'); // Need to set to utf8 other quotation marks display incorrectly
+			$the_page .= $clean_summary; 
 
 			// Display 'read more' button if there is additional content beyond the summary)
-			if (strlen($item->content)>0 ){
-				$the_page .='<a class="yarns_reader-item-more">See more...</a><!--.yarns_reader-item-more-->'; 
-				//$the_page .='<div class="yarns_reader-item-content yarns_reader-hidden">';
-				//$the_page .= $item->content;
-				//$the_page .= '</div><!--.yarns_reader-item-content-->';
+			if (strlen($item->content)>0){
+				if (compare_cleaned_html($clean_summary,$clean_content) < 2){
+					$the_page .='<a class="yarns_reader-item-more">See more...</a><!--.yarns_reader-item-more-->'; 
+				}
 			}
 
-			$the_page .='</div><!--.yarns_reader-item-summary-->'; 
-
-			
-
-			
+			$the_page .='</div><!--.yarns_reader-item-summary-->';
 
 			$the_page .= '<div class="yarns_reader-item-response">'.yarns_reader_reply_actions($item->posttype,$item->liked,$item->replied,$item->rsvped);
 			$the_page .= '</div><!--.yarns_reader-item-response-->';
@@ -738,7 +732,7 @@ function yarns_reader_add_feeditem($feedid,$title,$summary,$content,$published=0
 		}
 	}else{
 		//yarns_reader_log("post already exists: " .$permalink.": ".$title);
-	}	
+	}	 
 }
 
 /*
@@ -1334,7 +1328,6 @@ function yarns_reader_log($message){
 }
 
 function yarns_item_exists($permalink){
-	yarns_reader_log("CHECKING FOR POST: " .$permalink);
 	global $wpdb;
 	$items = $wpdb->get_results(
 		'SELECT * 
@@ -1355,7 +1348,7 @@ function yarns_item_exists($permalink){
 /* Remove titles for posts where the title is equal to the content (e.g. notes, asides, microblogs) */
 //In many rss feeds and h-feeds, the only indication of whether a title is redunant is that it duplicates 
 function clean_the_title($title,$content,$content_plain=''){
-	$clean_title = html_entity_decode($title); // First convert html entities to text (to ensure consistent comparision)
+	/*$clean_title = html_entity_decode($title); // First convert html entities to text (to ensure consistent comparision)
 	$clean_title = strip_tags(rtrim($clean_title,".")); // remove trailing "..."
 	$clean_title = strip_tags(trim($clean_title)); // remove white space on either side
 	$clean_title = htmlentities($clean_title, ENT_QUOTES); // Convert quotation marks to HTML entities
@@ -1368,7 +1361,12 @@ function clean_the_title($title,$content,$content_plain=''){
 	$clean_content = strip_tags(trim($clean_content)); // remove white space on either side
 	$clean_content = htmlentities($clean_content, ENT_QUOTES); // Convert quotation marks to HTML entities
 	$clean_content = str_replace("&nbsp;", "", $clean_content); // replace $nbsp; with a space character
-	$clean_content = str_replace(array("\r", "\n"), '', $clean_content); // remove line breaks from CONTENT
+	$clean_content = str_replace(array("\r", "\n"), '', $clean_content); // remove line breaks from CONTENT*/
+	
+	if (compare_cleaned_html($title, $content) >0 || compare_cleaned_html($title, $content_plain)>0){
+		$title = "";
+	} 
+	/*
 	if (strpos($clean_content,$clean_title)===0 ){
 		$title="";
 	} 
@@ -1385,9 +1383,32 @@ function clean_the_title($title,$content,$content_plain=''){
 			$title="";
 		} 
 	}
+	*/
 	return $title;
 }
 
+function compare_cleaned_html($string1,$string2){
+	//$string1 = html_entity_decode($string1); // First convert html entities to text (to ensure consistent comparision)
+	$string1 = strip_tags(rtrim($string1,".")); // remove trailing "..."
+	$string1 = htmlentities($string1, ENT_QUOTES); // Convert quotation marks to HTML entities
+	$string1 = str_replace(array("\r", "\n"), '', $string1); // remove line breaks 
+	$string1 = str_replace("&nbsp;", "", $string1); // replace $nbsp; with a space character
+	$string1 = strip_tags(trim($string1)); // remove white space on either side
+	
+	//$string2 = html_entity_decode($string2); // First convert html entities to text (to ensure consistent comparision)
+	$string2 = strip_tags(rtrim($string2,".")); // remove trailing "..."
+	$string2 = htmlentities($string2, ENT_QUOTES); // Convert quotation marks to HTML entities
+	$string2 = str_replace(array("\r", "\n"), '', $string2); // remove line breaks
+	$string2 = str_replace("&nbsp;", "", $string2); // replace $nbsp; with a space character
+	$string2 = strip_tags(trim($string2)); // remove white space on either side
+	
+	if ($string1 === $string2) {
+		return 2; // 2 == full match
+	} else if (strpos($string1,$string2)===0 ) {
+		return 1; // 1 = same start	
+	} 
+	return 0; // 0 == no match
+}
 
 /* 
 ** Returns true is the feed is of type rss 
