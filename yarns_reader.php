@@ -208,11 +208,8 @@ function yarns_reader_create_tables() {
 		rsvped text COLLATE utf8mb4_unicode_ci DEFAULT '' ,
 		syndication text COLLATE utf8mb4_unicode_ci DEFAULT '' ,
 		in_reply_to text COLLATE utf8mb4_unicode_ci DEFAULT '' ,
-
 		PRIMARY KEY id (id)
 	);";
-
-	
 	
 	require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
 	dbDelta($sql);
@@ -222,7 +219,6 @@ function yarns_reader_create_tables() {
 	yarns_reader_log("updated db version to ". get_site_option('yarns_reader_db_version'));
 }
 
-
 /* Check if the database version has changed, and update the database if so */
 function yarns_reader_update_db_check() {
 	global $yarns_reader_db_version;
@@ -230,7 +226,6 @@ function yarns_reader_update_db_check() {
 		yarns_reader_create_tables();
 	}
 }
-
 
 /* Create the following page */ 
 function create_following_page(){
@@ -253,11 +248,9 @@ function create_following_page(){
             ); 
             if(wp_insert_post( $post )<1)
                 wp_die("Could not create the followpage");
-        
         }else{
             wp_die("There is already a page called '" + $feedlocation +"'. Please choose a different name" );
-            /* THIS SHOULD BE REPLACED BY FUNCTION TO RENAME THE EXISTING PAGE*/
-            
+            /* THIS SHOULD BE REPLACED BY FUNCTION TO RENAME THE EXISTING PAGE*/    
     } 
 }
 
@@ -460,12 +453,6 @@ function yarns_reader_reply_actions($post_type, $liked, $replied, $rsvped){
 	return $the_reply_actions;
 }
 
-
-
-
-
-
-
 /*
 **
 **   Major functions
@@ -478,7 +465,6 @@ function yarns_reader_reply_actions($post_type, $liked, $replied, $rsvped){
 
 		yarns_reader_fetch_feed
 		yarns_reader_fetch_hfeed
-
 **	
 */
 
@@ -684,37 +670,21 @@ function yarns_reader_add_feeditem($feedid,$title,$summary,$content,$published=0
 
 	global $wpdb;
 
-
 	if($published < 1){
 		$published = time();
 	}
 	$published = date('Y-m-d H:i:s',$published);
 	$updated = date('Y-m-d H:i:s',$updated);
 
-	// If there is no featured photo defined, search for a first image in the content
-	/* 
-	//Deprecated, I think it's better to do this on displaying the post instead of storing it
-	
-	if ($photo == ''){
-		$photos = findPhotos($content);	
-
-		if (count($photos)<1){
-			$photos = findPhotos($summary);
-		}
-		if (count($photos) > 0){
-			$photo = $photos[0];
-		}
-	} 
-	*/
-	
-
-	
-
-
-	// if there is no summary, copy the content to the summary
-	if (strlen($summary) <1) {
+	// If the summary is exactly the same as the content, then empty content since it is redundant
+	if (strip_tags($summary) == strip_tags($content)){
+		$summary = $content;
+		$content = "";
+	} elseif (strlen($summary) <1) {
+		// if there is no summary, copy the content to the summary
 		$summary = $content;
 	} 
+
 	// truncate the summary if it is too long or contains more than one image
 	if (strlen(strip_tags($summary))>500 || count($photos)>1) { 
 		// since we're truncating, copy summary to content if content is empty
@@ -724,23 +694,14 @@ function yarns_reader_add_feeditem($feedid,$title,$summary,$content,$published=0
 		//Strip imgs and any tags not listed as allowed below:  ("<a><p><br>.....")
 		$summary = substr(strip_tags($summary,"<a><p><br><blockquote><b><code><del><em><h1><h2><h3><h4><h5><h6><li><ol><ul><pre><q><strong><sub><u>"),0,500) . "..."; 
 	}
-
-
-
-	// If the summary is exactly the same as the content, then empty content since it is redundant
-	if ($summary == $content){
-		$content = "";
-	}
-
-
 	
-
 	//If the author url is not known, then just use the site url
 	if (empty($authorurl)){$authorurl = $siteurl;}
 
 	// Add the post (if it doesn't already exist)
 	$table_name = $wpdb->prefix . "yarns_reader_posts";
-	if($wpdb->get_var( "SELECT COUNT(*) FROM ".$table_name." WHERE permalink LIKE \"".$permalink."\";")<1){
+	if (yarns_item_exists($permalink) != True) {
+	//if($wpdb->get_var( "SELECT COUNT(*) FROM ".$table_name." WHERE permalink LIKE \"".$permalink."\";")<1){
 		$rows_affected = $wpdb->insert( $table_name,
 			array(	
 				'feedid'=>$feedid,
@@ -778,7 +739,6 @@ function yarns_reader_add_feeditem($feedid,$title,$summary,$content,$published=0
 	}else{
 		//yarns_reader_log("post already exists: " .$permalink.": ".$title);
 	}	
-
 }
 
 /*
@@ -1035,15 +995,10 @@ function yarns_reader_aggregator() {
 			$items = $feed->get_items();
 			usort($items,'date_sort');
 			foreach ($items as $item){
-				//yarns_reader_log("got ".$item->get_title()." from ". $item->get_feed()->get_title()."<br/>");
 				$title = $item->get_title();
-
-
 				$summary = html_entity_decode ($item->get_description());
 				$content = html_entity_decode ($item->get_content());
-				//ORIGINAL $published=$item->get_date("U");
 				$published=$item->get_date('U');
-
 				$updated=0;
 				//Remove the title if it is equal to the post content (e.g. asides, notes, microblogs)
 				$title = clean_the_title($title,$content);
@@ -1060,12 +1015,10 @@ function yarns_reader_aggregator() {
 					yarns_reader_log("Exception occured: ".$e->getMessage());
 				}
 			}
-
 		} /****  H-FEEDS ****/ 
 		elseif ($feedtype == "h-feed"){
 			$feed = yarns_reader_fetch_hfeed($feedurl,$feedtype);
 			foreach ($feed as $item){
-				
 				$title = $item['name'];
 				$summary=$item['summary'];
 				$content=$item['content'];
@@ -1146,8 +1099,6 @@ function yarns_reader_fetch_feed($url,$feedtype) {
 	$feed->init();
 	$feed->handle_content_type();
 	
-	//yarns_reader_log("Feed:".print_r($feed,true));
-
 	if ( $feed->error() )
 		$errstring = implode("\n",$feed->error());
 		//if(strlen($errstring) >0){ $errstring = $feed['data']['error'];}
@@ -1165,6 +1116,7 @@ function yarns_reader_fetch_feed($url,$feedtype) {
 ** Fetch an H-FEED and return its content
 */
 function yarns_reader_fetch_hfeed($url,$feedtype) {
+	yarns_reader_log('fetching h-feed at '. $url);
 	//Parse microformats at the feed-url
 	$mf = Mf2\fetch($url);
 	//Identify the h-feed within the parsed MF2
@@ -1230,123 +1182,118 @@ function yarns_reader_fetch_hfeed($url,$feedtype) {
 		//yarns_reader_log(json_encode($hfeed_items));
 		//Fetch each post individually
 		foreach ($hfeed_item_urls as $hfeed_item_url){
-			$mf = Mf2\fetch($hfeed_item_url);
-			//Fetch the full post from its permalink ONLY if it has not already been added
-			foreach ($mf['items'] as $item) {
-  				if ("{$item['type'][0]}" == 'h-entry' ||
-					"{$item['type'][0]}" == 'h-event' )
-					// Only parse supported types (h-entry, h-event)
-				{ 
-					//yarns_reader_log("HFEED LOG: ". $hfeed_item_url . " | " ."{$item['properties']['url'][0]}" ); 
-					
-					//Only store an item_name if it is not equal to the content value
-					if ("{$item['properties']['name'][0]}" !="{$item['properties']['content'][0]['value']}" ) {
-						$item_name = "{$item['properties']['name'][0]}";
-					} else {
-						$item_name = '';
-					}
-
-					$item_type = "{$item['type'][0]}";
-					$item_summary = "{$item['properties']['summary'][0]}";
-					$item_published = strtotime("{$item['properties']['published'][0]}");
-					$item_updated = strtotime("{$item['properties']['updated'][0]}");
-					$item_location = "{$item['properties']['location'][0]['value']}";
-					//Note that location can be an h-card, but this script just gets the string value
-					$item_url = "{$item['properties']['url'][0]}";
-					$item_uid = "{$item['properties']['uid'][0]}";
-					if ("{$item['properties']['syndication']}"){
-						$syndication =  array();
-						foreach ($item['properties']['syndication'] as $syndication_item) {
-							$syndication[] = $syndication_item;		
+			//yarns_reader_log('following permalink at '. $hfeed_item_url);
+			// Only proceed if the permalink has not previous been fetched
+			if (yarns_item_exists($hfeed_item_url) !=True){
+				$mf = Mf2\fetch($hfeed_item_url);
+				//Fetch the full post from its permalink ONLY if it has not already been added
+				foreach ($mf['items'] as $item) {
+	  				if ("{$item['type'][0]}" == 'h-entry' ||
+						"{$item['type'][0]}" == 'h-event' )
+						// Only parse supported types (h-entry, h-event)
+					{ 
+						//yarns_reader_log("HFEED LOG: ". $hfeed_item_url . " | " ."{$item['properties']['url'][0]}" ); 
+						
+						//Only store an item_name if it is not equal to the content value
+						if ("{$item['properties']['name'][0]}" !="{$item['properties']['content'][0]['value']}" ) {
+							$item_name = "{$item['properties']['name'][0]}";
+						} else {
+							$item_name = '';
 						}
-						$item_syndication = json_encode($syndication);
-					}
-					//$item_syndication = json_encode("{$item['properties']['syndication']}");
 
-					if ("{$item['properties']['photo']}"){
-						$photos =  array();
-						foreach ($item['properties']['photo'] as $photo_item) {
-							$photos[] = $photo_item;		
+						$item_type = "{$item['type'][0]}";
+						$item_summary = "{$item['properties']['summary'][0]}";
+						$item_published = strtotime("{$item['properties']['published'][0]}");
+						$item_updated = strtotime("{$item['properties']['updated'][0]}");
+						$item_location = "{$item['properties']['location'][0]['value']}";
+						//Note that location can be an h-card, but this script just gets the string value
+						$item_url = "{$item['properties']['url'][0]}";
+						$item_uid = "{$item['properties']['uid'][0]}";
+						if ("{$item['properties']['syndication']}"){
+							$syndication =  array();
+							foreach ($item['properties']['syndication'] as $syndication_item) {
+								$syndication[] = $syndication_item;		
+							}
+							$item_syndication = json_encode($syndication);
 						}
-						$item_photo = json_encode($photos);
-					} else {
-						//Clear $item_photo
-						$item_photo ='';
-					}
+						//$item_syndication = json_encode("{$item['properties']['syndication']}");
 
-					//Check for 'featured' property if there was no 'photo'
-					if ($item_photo == ''){
-						if ("{$item['properties']['featured']}"){
+						if ("{$item['properties']['photo']}"){
 							$photos =  array();
-							foreach ($item['properties']['featured'] as $photo_item) {
+							foreach ($item['properties']['photo'] as $photo_item) {
 								$photos[] = $photo_item;		
 							}
 							$item_photo = json_encode($photos);
+						} else {
+							//Clear $item_photo
+							$item_photo ='';
 						}
-					}
 
-					$item_inreplyto = "{$item['properties']['in-reply-to'][0]['value']}";
-/*
+						//Check for 'featured' property if there was no 'photo'
+						if ($item_photo == ''){
+							if ("{$item['properties']['featured']}"){
+								$photos =  array();
+								foreach ($item['properties']['featured'] as $photo_item) {
+									$photos[] = $photo_item;		
+								}
+								$item_photo = json_encode($photos);
+							}
+						}
 
-$feedid,$title,$summary,$content,$published=0,$updated=0,$authorname='',$authorurl='',$avurl='',$permalink,$location,$photo,$type,$siteurl,$sitetitle,$syndication='',$in_reply_to=''){
-
-*/
-
-					
-					if ("{$item['properties']['author'][0]['type'][0]}" == "h-card"){
-						// get full author h-card
-						$item_author = "{$item['properties']['author'][0]['properties']['name'][0]}";
-						$item_avurl = "{$item['properties']['author'][0]['properties']['photo'][0]}";
-						$item_author_url = "{$item['properties']['author'][0]['properties']['url'][0]}";
+						$item_inreplyto = "{$item['properties']['in-reply-to'][0]['value']}";
 						
-					} else {
-						// just get the author name
-						$item_author = "{$item['properties']['author'][0]}";
-						$item_avurl = '';
-						$item_author_url = '';
+						if ("{$item['properties']['author'][0]['type'][0]}" == "h-card"){
+							// get full author h-card
+							$item_author = "{$item['properties']['author'][0]['properties']['name'][0]}";
+							$item_avurl = "{$item['properties']['author'][0]['properties']['photo'][0]}";
+							$item_author_url = "{$item['properties']['author'][0]['properties']['url'][0]}";
+							
+						} else {
+							// just get the author name
+							$item_author = "{$item['properties']['author'][0]}";
+							$item_avurl = '';
+							$item_author_url = '';
+						}
+						$item_content = "{$item['properties']['content'][0]['html']}";
+
+						//handle h-entry
+						if ("{$item['type'][0]}" == "h-entry"){
+				
+						}
+
+						//handle h-event
+						if ("{$item['type'][0]}" == "h-event"){
+							
+						}
+
+						//Remove the title if it is equal to the post content (e.g. asides, notes, microblogs)
+						$item_name = clean_the_title($item_name,$item_content,$item_content_plain);
+
+						$hfeed_items [] = array (
+							"name"=>$item_name,
+							"type"=>$item_type,
+							"summary"=>$item_summary,
+							"content"=>$item_content,
+							"location"=>$item_location,
+							"photo"=>$item_photo,
+							"published" =>$item_published,
+							"updated" =>$item_updated,
+							"url"=>$item_url,
+							"uid"=>$item_url,
+							"author"=>$item_author,
+							"syndication"=>$item_syndication,
+							"in-reply-to"=>$item_inreplyto,
+							"author"=>$item_author,
+							"featured"=>$item_featured,
+							"siteurl"=>$site_url,
+							"author_url"=>$item_author_url,
+							"avurl"=>$item_avurl
+						);
 					}
-					//$item_author = "{$item['properties']['author'][0]['type']}";
-
-
-					$item_content = "{$item['properties']['content'][0]['html']}";
-
-
-
-					//handle h-entry
-					if ("{$item['type'][0]}" == "h-entry"){
-			
-					}
-
-					//handle h-event
-					if ("{$item['type'][0]}" == "h-event"){
-						
-					}
-
-					//Remove the title if it is equal to the post content (e.g. asides, notes, microblogs)
-					$item_name = clean_the_title($item_name,$item_content,$item_content_plain);
-
-					$hfeed_items [] = array (
-						"name"=>$item_name,
-						"type"=>$item_type,
-						"summary"=>$item_summary,
-						"content"=>$item_content,
-						"location"=>$item_location,
-						"photo"=>$item_photo,
-						"published" =>$item_published,
-						"updated" =>$item_updated,
-						"url"=>$item_url,
-						"uid"=>$item_url,
-						"author"=>$item_author,
-						"syndication"=>$item_syndication,
-						"in-reply-to"=>$item_inreplyto,
-						"author"=>$item_author,
-						"featured"=>$item_featured,
-						"siteurl"=>$site_url,
-						"author_url"=>$item_author_url,
-						"avurl"=>$item_avurl
-					);
-				}
-			}	
+				}	
+			} else {
+				yarns_reader_log("Post has already been fetched: " . $hfeed_item_url);
+			}
 		}
 		return $hfeed_items;
 	}
@@ -1384,6 +1331,25 @@ function yarns_reader_log($message){
 		) 
 	);
 
+}
+
+function yarns_item_exists($permalink){
+	yarns_reader_log("CHECKING FOR POST: " .$permalink);
+	global $wpdb;
+	$items = $wpdb->get_results(
+		'SELECT * 
+		FROM  `'.$wpdb->prefix . 'yarns_reader_posts` 
+		ORDER BY  `id`  DESC;'  
+	);
+	if ( !empty( $items ) ) { 			
+		foreach ( $items as $item ) {
+			if ($permalink == $item->permalink) {
+				yarns_reader_log("MATCH: " . $permalink. " is same as " . $item->permalink);
+				return True;
+			}
+		}
+	} 
+	return False;
 }
 
 /* Remove titles for posts where the title is equal to the content (e.g. notes, asides, microblogs) */
