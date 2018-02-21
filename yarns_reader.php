@@ -98,7 +98,7 @@ function yarns_reader_admin() {
 /* Create the menu option "Yarns Indie Reader Settings" */ 
 function yarns_reader_admin_actions() {
 	/* add_options_page( $page_title, $menu_title, $capability, $menu_slug, $function);*/
-	add_options_page("Yarns Indie Reader", "Yarns Indie Reader", "edit_posts", "yarns_reader_settings", "yarns_reader_admin");
+	add_options_page("Yarns Indie Reader", "Yarns Indie Reader", 1, "yarns_reader_settings", "yarns_reader_admin");
 }
 /* Hook to run yarns_reader_admin_actions when WordPress generates the admin menu */ 
 add_action('admin_menu', 'yarns_reader_admin_actions');
