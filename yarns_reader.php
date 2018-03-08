@@ -484,8 +484,7 @@ function yarns_reader_display_page($pagenum){
 
 	//Iterate through all the posts in the database. Display the first 15 
 	if ( !empty( $items ) ) { 
-		//$the_page = '<div class="yarns_reader-page-'.$pagenum.'">';
-		$the_page = '<div class="yarns_reader-test">';
+		$the_page = '<div class="yarns_reader-page-'.$pagenum.'">';
 		//$the_page = "Page ". $pagenum ;
 		foreach ( $items as $item ) {
 			if ($item->posttype=="h-event"){
@@ -497,18 +496,10 @@ function yarns_reader_display_page($pagenum){
 			// Display an individual feed item
 			$the_page .= '<div class="yarns_reader-feed-item" data-id="'.$item->id.'">'; // container for each feed item
 		
-			$the_page .= '<div class="yarns_reader-item-meta">'; // container for meta 
-			$the_page .= '<a class="yarns_reader-item-authorname" href="'.$item->siteurl.'" target="_blank">';
-			if ($item->authoravurl!=''){
-				$the_page .= '<div class="yarns_reader-item-authorav"> <img src="'.$item->authoravurl.'"></div>';
-			} 
-			$the_page .= $item->sitetitle.'</a> '; // authorname
-			$the_page .= '<a class="yarns_reader-item-date" href="'.$item->permalink.'" target="_blank">at '.user_datetime($item->published).'</a>'; // date/permalink
-			//$the_page .= '<span class="yarns_reader-item-type">'.$display_type.'</span>'; // display type
-			
-			$the_page .= '</div><!--.yarns_reader-item-meta-->';
+			$the_page .= display_item_meta($item);
+
 			if ($item->title !=""){
-				$the_page .= '<a class="yarns_reader-item-title" href="'.$item->permalink.'" target="_blank">'.$item->title.'</a>';
+				$the_page .= '<a class="yarns_reader-item-title" href="'.$item->permalink.'">'.$item->title.'</a>';
 			}
 
 			$tidy = new tidy();
@@ -521,7 +512,6 @@ function yarns_reader_display_page($pagenum){
 
 			if (strlen($item->photo)>0 ){
 				//the feed item has a photo
-
 				// Only show the photo if there is not already a photo in the summary
 				// (This is because some post summaries duplicate photos in the photo property)
 				if (!findPhotos($item->summary)[0]){
@@ -558,36 +548,11 @@ function yarns_reader_display_page($pagenum){
 
 			$the_page .= '<div class="yarns_reader-item-meta2">'; // container for meta2
 			if (strlen($item->location)>0){
-				$the_page .= '<div class="yarns_reader-item-location">';
-				$location= json_decode($item->location);
-
-
-				if ($location->url) {
-					$the_page .= '<a class="yarns_reader-item-location-url" href = "'. $location->url . '">';
-					if($location->name){
-						$the_page.=$location->name;
-					}else {
-						$the_page.= $location->url;
-					}
-					$the_page .= '</a>';
-				} else if ($location->name){
-					$the_page .= $location->name;
-				} else {
-					//fallback to plain text location
-					$the_page .= $item->location;
-				}
-
-				$the_page .='</div>';
+				$the_page.= display_location($item->location);
 			}
 
 			if (strlen($item->syndication)>0){
-				$syndication_items = json_decode($item->syndication);
-				$the_page .= '<div class="yarns_reader-item-syndication">';
-				foreach($syndication_items as $item){
-
-					$the_page .= '<a href ="'.$item.'" target="_blank">'.parse_url($item,PHP_URL_HOST) .'</a>';
-				}
-				$the_page .= '</div>';
+				$the_page .= display_syndication($item->syndication);
 			}
 
 			$the_page .= '</div><!--.yarns_reader-item-meta2-->';
@@ -601,6 +566,10 @@ function yarns_reader_display_page($pagenum){
 	}
 	wp_die(); // this is required to terminate immediately and return a proper response
 }
+
+
+
+
 
 
 /* Returns FULL CONTENT for a single item display */ 
@@ -619,11 +588,8 @@ function yarns_reader_display_full_content($id){
 	if ( !empty( $item ) ) { 
 		$the_page .= '<div class="yarns_reader-feed-item" data-id="'.$item->id.'">'; // container for each feed item
 			
-		$the_page .= '<div class="yarns_reader-item-meta">'; // container for meta 
-		$the_page .= '<a class="yarns_reader-item-authorname" href="'.$item->siteurl.'">'.$item->sitetitle.'</a> '; // authorname
-		$the_page .= '<a class="yarns_reader-item-date" href="'.$item->permalink.'">at '.user_datetime($item->published).'</a>'; // date/permalink
-		$the_page .= '<span class="yarns_reader-item-type">'.$display_type.'</span>'; // display type
-		$the_page .= '</div><!--.yarns_reader-item-meta-->';
+		$the_page .= display_item_meta($item);
+
 		if ($item->title !=""){
 			$the_page .= '<a class="yarns_reader-item-title" href="'.$item->permalink.'">'.$item->title.'</a>';
 		}
@@ -638,17 +604,13 @@ function yarns_reader_display_full_content($id){
 		
 		$the_page .= '<div class="yarns_reader-item-meta2">'; // container for meta2
 		if (strlen($item->location)>0){
-			$the_page .= '<div class="yarns_reader-item-location">'.$item->location.'</div>'; // display type
+			$the_page.= display_location($item->location);
 		}
 
-		if (strlen($item->syndication)>0){
-			$syndication_items = json_decode($item->syndication);
-			$the_page .= '<div class="yarns_reader-item-syndication">';
-			foreach($syndication_items as $item){
 
-				$the_page .= '<a href ="'.$item.'" >'.parse_url($item,PHP_URL_HOST) .'</span>';
-			}
-			$the_page .= '</div>';
+
+		if (strlen($item->syndication)>0){
+			$the_page .= display_syndication($item->syndication);
 		}
 
 		$the_page .= '</div><!--.yarns_reader-item-meta2-->';		
@@ -673,6 +635,68 @@ function yarns_reader_display_full_content($id){
 }
 
  
+/*
+**
+**   Displays parts of feed items
+**	 (functions that return HTML for part of a feed item, such as its meta, location, etc.)
+*/
+
+/* Return HTML for the item meta (top of the item)  */
+function display_item_meta($item){
+	$the_meta = '<div class="yarns_reader-item-meta">'; // container for meta 
+	$the_meta .= '<a class="yarns_reader-item-authorname" href="'.$item->siteurl.'" target="_blank">';
+	if ($item->authoravurl!=''){
+		$the_meta .= '<div class="yarns_reader-item-authorav"> <img src="'.$item->authoravurl.'"></div>';
+	} 
+	$the_meta .= $item->sitetitle.'</a> '; // authorname
+	$the_meta .= '<a class="yarns_reader-item-date" href="'.$item->permalink.'" target="_blank">at '.user_datetime($item->published).'</a>'; // date/permalink
+	//$the_meta .= '<span class="yarns_reader-item-type">'.$display_type.'</span>'; // display type
+	
+	$the_meta .= '</div><!--.yarns_reader-item-meta-->';
+	
+	return $the_meta; 
+}
+
+/* Return HTML for the item location  */
+function display_location($json){
+	$the_location .= '<div class="yarns_reader-item-location">';
+	$location= json_decode($json);
+
+	if ($location->url) {
+		$the_location .= '<a class="yarns_reader-item-location-url" href = "'. $location->url . '">';
+		if($location->name){
+			$the_location.=$location->name;
+		}else {
+			$the_location.= $location->url;
+		}
+		$the_location .= '</a>';
+	} else if ($location->name){
+		$the_location .= $location->name;
+	} else {
+		//fallback to plain text location
+		$the_location .= $item->location;
+	}
+
+	$the_location .='</div>';
+	return $the_location;
+}
+
+/* Return HTML for the item syndication links  */
+function display_syndication($json){
+	$syndication_items = json_decode($json);
+	$the_syndication .= '<div class="yarns_reader-item-syndication">';
+	foreach($syndication_items as $item){
+		$the_syndication .= '<a href ="'.$item.'" >'.parse_url($item,PHP_URL_HOST) .'</span>';
+	}
+	$the_syndication .= '</div>';
+	return $the_syndication;
+}
+
+
+
+
+
+
 /* Add a post to the yarns_reader_posts table in the database */
 function yarns_reader_add_feeditem($feedid,$title,$summary,$content,$published=0,$updated=0,$authorname='',$authorurl='',$avurl='',$permalink,$location,$photo,$type,$siteurl,$sitetitle,$syndication='',$in_reply_to=''){
 
@@ -1377,42 +1401,9 @@ function yarns_item_exists($permalink){
 /* Remove titles for posts where the title is equal to the content (e.g. notes, asides, microblogs) */
 //In many rss feeds and h-feeds, the only indication of whether a title is redunant is that it duplicates 
 function clean_the_title($title,$content,$content_plain=''){
-	/*$clean_title = html_entity_decode($title); // First convert html entities to text (to ensure consistent comparision)
-	$clean_title = strip_tags(rtrim($clean_title,".")); // remove trailing "..."
-	$clean_title = strip_tags(trim($clean_title)); // remove white space on either side
-	$clean_title = htmlentities($clean_title, ENT_QUOTES); // Convert quotation marks to HTML entities
-	$clean_title = str_replace(array("\r", "\n"), '', $clean_title); // remove line breaks from title
-	$clean_title = str_replace("&nbsp;", "", $clean_title); // replace $nbsp; with a space character
-	$clean_title = str_replace(array("\r", "\n"), '', $clean_title); // remove line breaks from title
-	
-	$clean_content = html_entity_decode($content); // First convert html entities to text (to ensure consistent comparision)
-	$clean_content = strip_tags(rtrim($clean_content,".")); // remove trailing "..."
-	$clean_content = strip_tags(trim($clean_content)); // remove white space on either side
-	$clean_content = htmlentities($clean_content, ENT_QUOTES); // Convert quotation marks to HTML entities
-	$clean_content = str_replace("&nbsp;", "", $clean_content); // replace $nbsp; with a space character
-	$clean_content = str_replace(array("\r", "\n"), '', $clean_content); // remove line breaks from CONTENT*/
-	
 	if (compare_cleaned_html($title, $content) >0 || compare_cleaned_html($title, $content_plain)>0){
 		$title = "";
 	} 
-	/*
-	if (strpos($clean_content,$clean_title)===0 ){
-		$title="";
-	} 
-	// Also compare to content_plain if it exists.  ($content_plain is a plain text version, whereas $content has html)
-	if ($content_plain != ''){
-		$clean_content = html_entity_decode($content_plain); // First convert html entities to text (to ensure consistent comparision)
-		$clean_content = strip_tags(rtrim($clean_content,".")); // remove trailing "..."
-		$clean_content = strip_tags(trim($clean_content)); // remove white space on either side
-		$clean_content = htmlentities($clean_content, ENT_QUOTES); // Convert quotation marks to HTML entities
-		$clean_content = str_replace("&nbsp;", "", $clean_content); // replace $nbsp; with a space character
-		$clean_content = str_replace(array("\r", "\n"), '', $clean_content); // remove line breaks from CONTENT
-		
-		if (strpos($clean_content,$clean_title)===0 ){
-			$title="";
-		} 
-	}
-	*/
 	return $title;
 }
 
