@@ -4,7 +4,7 @@
  * Plugin URI: jackjamieson.net
  * Description: Yarns Indie Reader is a feed reader. You can subscribe to blogs and websites, view their updates in a feed, then post likes and replies directly to your WordPress site. Replies and likes are marked-up with microformats 2, so posts created with this plugin will support webmentions. 
 
- * Version: 0.1
+ * Version: 0.2
  * Author: Jack Jamieson
  * Author URI: http://jackjamieson.net
  * Text Domain: yarns_reader
