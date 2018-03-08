@@ -4,7 +4,7 @@
  * Plugin URI: jackjamieson.net
  * Description: Yarns Indie Reader is a feed reader. You can subscribe to blogs and websites, view their updates in a feed, then post likes and replies directly to your WordPress site. Replies and likes are marked-up with microformats 2, so posts created with this plugin will support webmentions. 
 
- * Version: 0.1
+ * Version: 0.2
  * Author: Jack Jamieson
  * Author URI: http://jackjamieson.net
  * Text Domain: yarns_reader
@@ -36,6 +36,8 @@
 
 defined( 'ABSPATH' ) or die( 'No script kiddies please!' );
  
+
+
 // Require the mf2 parser only if it has not already been added by another plugin
 if ( ! class_exists( 'Mf2\Parser' ) ) {
     require_once plugin_dir_path( __FILE__ ) .  'lib/Mf2/Parser.php'; // For parsing h-feed
@@ -44,17 +46,14 @@ if ( ! class_exists( 'Mf2\Parser' ) ) {
 if ( ! class_exists( 'phpUri' ) ) {
 	require_once plugin_dir_path( __FILE__ ) .  'lib/phpuri.php'; // For converting relative URIs to absolute 
 }
-
-
-
  
 
 global $yarns_reader_db_version;
-$yarns_reader_db_version = "1.7"; // Updated database structure 
+$yarns_reader_db_version = "1.8"; // Updated database structure 
 	//version 1.5 - added tags to 'following' table 
 	// version 1.6 changed table text format to utf8mb4 (to support emojis and special characters)
 	// version 1.7 add syndication and in_reply_to properties to feed  items
-
+	// version 1.8 set photo to mediumtext, so it can hold larger arrays
 
 
 
@@ -95,7 +94,7 @@ function yarns_reader_admin() {
 /* Create the menu option "Yarns Indie Reader Settings" */ 
 function yarns_reader_admin_actions() {
 	/* add_options_page( $page_title, $menu_title, $capability, $menu_slug, $function);*/
-	add_options_page("Yarns Indie Reader", "Yarns Indie Reader", "edit_posts", "yarns_reader_settings", "yarns_reader_admin");
+	add_options_page("Yarns Indie Reader", "Yarns Indie Reader", 1, "yarns_reader_settings", "yarns_reader_admin");
 }
 /* Hook to run yarns_reader_admin_actions when WordPress generates the admin menu */ 
 add_action('admin_menu', 'yarns_reader_admin_actions');
@@ -196,7 +195,7 @@ function yarns_reader_create_tables() {
 		authoravurl text COLLATE utf8mb4_unicode_ci DEFAULT '' ,
 		permalink text COLLATE utf8mb4_unicode_ci DEFAULT '' NOT NULL,
 		location text COLLATE utf8mb4_unicode_ci DEFAULT '' ,
-		photo text COLLATE utf8mb4_unicode_ci DEFAULT '' ,
+		photo mediumtext COLLATE utf8mb4_unicode_ci DEFAULT '' ,
 		posttype text COLLATE utf8mb4_unicode_ci DEFAULT '' NOT NULL,
 		viewed boolean DEFAULT FALSE NOT NULL,
 		liked text COLLATE utf8mb4_unicode_ci DEFAULT '' ,
@@ -205,11 +204,8 @@ function yarns_reader_create_tables() {
 		rsvped text COLLATE utf8mb4_unicode_ci DEFAULT '' ,
 		syndication text COLLATE utf8mb4_unicode_ci DEFAULT '' ,
 		in_reply_to text COLLATE utf8mb4_unicode_ci DEFAULT '' ,
-
 		PRIMARY KEY id (id)
 	);";
-
-	
 	
 	require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
 	dbDelta($sql);
@@ -219,7 +215,6 @@ function yarns_reader_create_tables() {
 	yarns_reader_log("updated db version to ". get_site_option('yarns_reader_db_version'));
 }
 
-
 /* Check if the database version has changed, and update the database if so */
 function yarns_reader_update_db_check() {
 	global $yarns_reader_db_version;
@@ -227,7 +222,6 @@ function yarns_reader_update_db_check() {
 		yarns_reader_create_tables();
 	}
 }
-
 
 /* Create the following page */ 
 function create_following_page(){
@@ -250,11 +244,9 @@ function create_following_page(){
             ); 
             if(wp_insert_post( $post )<1)
                 wp_die("Could not create the followpage");
-        
         }else{
             wp_die("There is already a page called '" + $feedlocation +"'. Please choose a different name" );
-            /* THIS SHOULD BE REPLACED BY FUNCTION TO RENAME THE EXISTING PAGE*/
-            
+            /* THIS SHOULD BE REPLACED BY FUNCTION TO RENAME THE EXISTING PAGE*/    
     } 
 }
 
@@ -265,18 +257,6 @@ function create_following_page(){
 ** Defines the interval for the cron job (60 minutes) 
 */
 function yarns_reader_cron_definer($schedules){
-	/*
-	$schedules['fivemins'] = array(
-		'interval'=> 300,
-		'display'=>  __('Once Every 5 Minutes')
-	);
-
-	$schedules['twentymins'] = array(
-		'interval'=> 1200,
-		'display'=>  __('Once Every 20 Minutes')
-	);
-	*/
-
 	$schedules['sixtymins'] = array(
 		'interval'=> 3600,
 		'display'=>  __('Once Every 60 Minutes')
@@ -469,12 +449,6 @@ function yarns_reader_reply_actions($post_type, $liked, $replied, $rsvped){
 	return $the_reply_actions;
 }
 
-
-
-
-
-
-
 /*
 **
 **   Major functions
@@ -487,7 +461,6 @@ function yarns_reader_reply_actions($post_type, $liked, $replied, $rsvped){
 
 		yarns_reader_fetch_feed
 		yarns_reader_fetch_hfeed
-
 **	
 */
 
@@ -511,8 +484,7 @@ function yarns_reader_display_page($pagenum){
 
 	//Iterate through all the posts in the database. Display the first 15 
 	if ( !empty( $items ) ) { 
-		//$the_page = '<div class="yarns_reader-page-'.$pagenum.'">';
-		$the_page = '<div class="yarns_reader-test">';
+		$the_page = '<div class="yarns_reader-page-'.$pagenum.'">';
 		//$the_page = "Page ". $pagenum ;
 		foreach ( $items as $item ) {
 			if ($item->posttype=="h-event"){
@@ -520,45 +492,33 @@ function yarns_reader_display_page($pagenum){
 			} else {
 				$display_type = ""; // unless specified, do not display post type
 			}
-			/*
-			//// Deprecated for now since replies are displayed on the buttons themselves
-			//Generate html for responses (likes, replies) if they exist
-			$the_replies ='';
-			if ($item->liked) { $the_replies .= '<a href="'.get_permalink($item->liked).'">like</a>'; }
-			if ($item->replied) { $the_replies .= '<a href="'.get_permalink($item->replied).'">reply</a>'; }
-			if ($item->rsvped){ $the_replies .= '<a href="'.get_permalink($item->rsvped).'">rsvp</a>'; }
-			*/
-
+		
 			// Display an individual feed item
 			$the_page .= '<div class="yarns_reader-feed-item" data-id="'.$item->id.'">'; // container for each feed item
 		
-			$the_page .= '<div class="yarns_reader-item-meta">'; // container for meta 
-			$the_page .= '<a class="yarns_reader-item-authorname" href="'.$item->siteurl.'" target="_blank">'.$item->sitetitle.'</a> '; // authorname
-			$the_page .= '<a class="yarns_reader-item-date" href="'.$item->permalink.'" target="_blank">at '.user_datetime($item->published).'</a>'; // date/permalink
-			//$the_page .= '<span class="yarns_reader-item-type">'.$display_type.'</span>'; // display type
-			
-			$the_page .= '</div><!--.yarns_reader-item-meta-->';
+			$the_page .= display_item_meta($item);
+
 			if ($item->title !=""){
-				$the_page .= '<a class="yarns_reader-item-title" href="'.$item->permalink.'" target="_blank">'.$item->title.'</a>';
+				$the_page .= '<a class="yarns_reader-item-title" href="'.$item->permalink.'">'.$item->title.'</a>';
 			}
 
 			$tidy = new tidy();
 			$config = array(
      			//'doctype' => 'omit',
      			'quote-marks' =>true,
+     			'show-body-only' => true 
 			);
-			$clean_summary = $tidy->repairString($item->summary, $config, 'utf8'); // Need to set to utf8 other quotation marks display incorrectly
+
 
 			if (strlen($item->photo)>0 ){
 				//the feed item has a photo
-
-				//Only show the photo if there is not already a photo in the summary
-				// To avoid showing duplicate photos when different sizes are 
-				if (!findPhotos($clean_summary)[0]){
+				// Only show the photo if there is not already a photo in the summary
+				// (This is because some post summaries duplicate photos in the photo property)
+				if (!findPhotos($item->summary)[0]){
+					$photos = json_decode($item->photo);
 				//if (findPhotos($clean_summary)[0] != $item->photo) {
-					
 					$the_page .='<div class="yarns_reader-item-photo">';
-					$the_page .='<img src="'.$item->photo.'">';
+					$the_page .='<img src="'.$photos[0].'">'; 
 					$the_page .='</div>'; 					
 				}
 				
@@ -566,61 +526,50 @@ function yarns_reader_display_page($pagenum){
 			
 			$the_page .='<div class="yarns_reader-item-summary">';
 			if (strlen($item->in_reply_to)>0){
-				$the_page .= '<div class="yarns_reader-item-reply">reply to post at <a href = "'.$item->in_reply_to.'" target="_blank">'.parse_url($item->in_reply_to,PHP_URL_HOST).'</a></div>';
+				$the_page .= '<div class="yarns_reader-item-reply">↳ in reply to post at <a href = "'.$item->in_reply_to.'" target="_blank">'.parse_url($item->in_reply_to,PHP_URL_HOST).'</a></div>';
 			}
+
 			// Clean up the summary using tidy()
-
-			
-		
-
-			$the_page .= $clean_summary;
+			$clean_summary = $tidy->repairString($item->summary, $config, 'utf8'); // Need to set to utf8 other quotation marks display incorrectly
+			$clean_content = $tidy->repairString($item->content, $config, 'utf8'); // Need to set to utf8 other quotation marks display incorrectly
+			$the_page .= $clean_summary; 
 
 			// Display 'read more' button if there is additional content beyond the summary)
-			if (strlen($item->content)>0 ){
-				$the_page .='<a class="yarns_reader-item-more">See more...</a><!--.yarns_reader-item-more-->'; 
-				//$the_page .='<div class="yarns_reader-item-content yarns_reader-hidden">';
-				//$the_page .= $item->content;
-				//$the_page .= '</div><!--.yarns_reader-item-content-->';
+			if (strlen($item->content)>0){
+				if (compare_cleaned_html($clean_summary,$clean_content) < 2){
+					$the_page .='<a class="yarns_reader-item-more">See more...</a><!--.yarns_reader-item-more-->'; 
+				}
 			}
 
-			$the_page .='</div><!--.yarns_reader-item-summary-->'; 
-
-			
-
-			
+			$the_page .='</div><!--.yarns_reader-item-summary-->';
 
 			$the_page .= '<div class="yarns_reader-item-response">'.yarns_reader_reply_actions($item->posttype,$item->liked,$item->replied,$item->rsvped);
 			$the_page .= '</div><!--.yarns_reader-item-response-->';
 
 			$the_page .= '<div class="yarns_reader-item-meta2">'; // container for meta2
 			if (strlen($item->location)>0){
-				$the_page .= '<div class="yarns_reader-item-location">'.$item->location.'</div>'; // display type
+				$the_page.= display_location($item->location);
 			}
 
 			if (strlen($item->syndication)>0){
-				$syndication_items = json_decode($item->syndication);
-				$the_page .= '<div class="yarns_reader-item-syndication">';
-				foreach($syndication_items as $item){
-
-					$the_page .= '<a href ="'.$item.'" target="_blank">'.parse_url($item,PHP_URL_HOST) .'</a>';
-				}
-				$the_page .= '</div>';
+				$the_page .= display_syndication($item->syndication);
 			}
 
 			$the_page .= '</div><!--.yarns_reader-item-meta2-->';
-			
-
 			$the_page .= '</div><!--.yarns_reader-feed-item-->';	
 		}
 		$the_page .= '</div><!--yarns_reader-page-'.$pagenum.'-->';
 		echo $the_page;
-
 	} else {
 		// There are no more items!
 		echo "finished";
 	}
 	wp_die(); // this is required to terminate immediately and return a proper response
 }
+
+
+
+
 
 
 /* Returns FULL CONTENT for a single item display */ 
@@ -639,11 +588,8 @@ function yarns_reader_display_full_content($id){
 	if ( !empty( $item ) ) { 
 		$the_page .= '<div class="yarns_reader-feed-item" data-id="'.$item->id.'">'; // container for each feed item
 			
-		$the_page .= '<div class="yarns_reader-item-meta">'; // container for meta 
-		$the_page .= '<a class="yarns_reader-item-authorname" href="'.$item->siteurl.'">'.$item->sitetitle.'</a> '; // authorname
-		$the_page .= '<a class="yarns_reader-item-date" href="'.$item->permalink.'">at '.user_datetime($item->published).'</a>'; // date/permalink
-		$the_page .= '<span class="yarns_reader-item-type">'.$display_type.'</span>'; // display type
-		$the_page .= '</div><!--.yarns_reader-item-meta-->';
+		$the_page .= display_item_meta($item);
+
 		if ($item->title !=""){
 			$the_page .= '<a class="yarns_reader-item-title" href="'.$item->permalink.'">'.$item->title.'</a>';
 		}
@@ -658,17 +604,13 @@ function yarns_reader_display_full_content($id){
 		
 		$the_page .= '<div class="yarns_reader-item-meta2">'; // container for meta2
 		if (strlen($item->location)>0){
-			$the_page .= '<div class="yarns_reader-item-location">'.$item->location.'</div>'; // display type
+			$the_page.= display_location($item->location);
 		}
 
-		if (strlen($item->syndication)>0){
-			$syndication_items = json_decode($item->syndication);
-			$the_page .= '<div class="yarns_reader-item-syndication">';
-			foreach($syndication_items as $item){
 
-				$the_page .= '<a href ="'.$item.'" >'.parse_url($item,PHP_URL_HOST) .'</span>';
-			}
-			$the_page .= '</div>';
+
+		if (strlen($item->syndication)>0){
+			$the_page .= display_syndication($item->syndication);
 		}
 
 		$the_page .= '</div><!--.yarns_reader-item-meta2-->';		
@@ -693,46 +635,88 @@ function yarns_reader_display_full_content($id){
 }
 
  
+/*
+**
+**   Displays parts of feed items
+**	 (functions that return HTML for part of a feed item, such as its meta, location, etc.)
+*/
+
+/* Return HTML for the item meta (top of the item)  */
+function display_item_meta($item){
+	$the_meta = '<div class="yarns_reader-item-meta">'; // container for meta 
+	$the_meta .= '<a class="yarns_reader-item-authorname" href="'.$item->siteurl.'" target="_blank">';
+	if ($item->authoravurl!=''){
+		$the_meta .= '<div class="yarns_reader-item-authorav"> <img src="'.$item->authoravurl.'"></div>';
+	} 
+	$the_meta .= $item->sitetitle.'</a> '; // authorname
+	$the_meta .= '<a class="yarns_reader-item-date" href="'.$item->permalink.'" target="_blank">at '.user_datetime($item->published).'</a>'; // date/permalink
+	//$the_meta .= '<span class="yarns_reader-item-type">'.$display_type.'</span>'; // display type
+	
+	$the_meta .= '</div><!--.yarns_reader-item-meta-->';
+	
+	return $the_meta; 
+}
+
+/* Return HTML for the item location  */
+function display_location($json){
+	$the_location .= '<div class="yarns_reader-item-location">';
+	$location= json_decode($json);
+
+	if ($location->url) {
+		$the_location .= '<a class="yarns_reader-item-location-url" href = "'. $location->url . '">';
+		if($location->name){
+			$the_location.=$location->name;
+		}else {
+			$the_location.= $location->url;
+		}
+		$the_location .= '</a>';
+	} else if ($location->name){
+		$the_location .= $location->name;
+	} else {
+		//fallback to plain text location
+		$the_location .= $item->location;
+	}
+
+	$the_location .='</div>';
+	return $the_location;
+}
+
+/* Return HTML for the item syndication links  */
+function display_syndication($json){
+	$syndication_items = json_decode($json);
+	$the_syndication .= '<div class="yarns_reader-item-syndication">';
+	foreach($syndication_items as $item){
+		$the_syndication .= '<a href ="'.$item.'" >'.parse_url($item,PHP_URL_HOST) .'</span>';
+	}
+	$the_syndication .= '</div>';
+	return $the_syndication;
+}
+
+
+
+
+
+
 /* Add a post to the yarns_reader_posts table in the database */
 function yarns_reader_add_feeditem($feedid,$title,$summary,$content,$published=0,$updated=0,$authorname='',$authorurl='',$avurl='',$permalink,$location,$photo,$type,$siteurl,$sitetitle,$syndication='',$in_reply_to=''){
 
-	//yarns_reader_log("adding post: ".$permalink.": ".$title);
 	global $wpdb;
 
-
-	//yarns_reader_log("published = " . $published);
 	if($published < 1){
 		$published = time();
 	}
-	//yarns_reader_log("published2 = " . $published);
 	$published = date('Y-m-d H:i:s',$published);
-	//yarns_reader_log("published3 = " . $published);
 	$updated = date('Y-m-d H:i:s',$updated);
 
-
-
-	// If there is no featured photo defined, search for a first image in the content
-	if ($photo == ''){
-		$photos = findPhotos($content);	
-
-		if (count($photos)<1){
-			$photos = findPhotos($summary);
-		}
-		if (count($photos) > 0){
-			$photo = $photos[0];
-		}
-	} 
-	
-
-	
-
-	
-
-
-	// if there is no summary, copy the content to the summary
-	if (strlen($summary) <1) {
+	// If the summary is exactly the same as the content, then empty content since it is redundant
+	if (strip_tags($summary) == strip_tags($content)){
+		$summary = $content;
+		$content = "";
+	} elseif (strlen($summary) <1) {
+		// if there is no summary, copy the content to the summary
 		$summary = $content;
 	} 
+
 	// truncate the summary if it is too long or contains more than one image
 	if (strlen(strip_tags($summary))>500 || count($photos)>1) { 
 		// since we're truncating, copy summary to content if content is empty
@@ -742,23 +726,14 @@ function yarns_reader_add_feeditem($feedid,$title,$summary,$content,$published=0
 		//Strip imgs and any tags not listed as allowed below:  ("<a><p><br>.....")
 		$summary = substr(strip_tags($summary,"<a><p><br><blockquote><b><code><del><em><h1><h2><h3><h4><h5><h6><li><ol><ul><pre><q><strong><sub><u>"),0,500) . "..."; 
 	}
-
-
-
-	// If the summary is exactly the same as the content, then empty content since it is redundant
-	if ($summary == $content){
-		$content = "";
-	}
-
-
 	
-
 	//If the author url is not known, then just use the site url
 	if (empty($authorurl)){$authorurl = $siteurl;}
 
 	// Add the post (if it doesn't already exist)
 	$table_name = $wpdb->prefix . "yarns_reader_posts";
-	if($wpdb->get_var( "SELECT COUNT(*) FROM ".$table_name." WHERE permalink LIKE \"".$permalink."\";")<1){
+	if (yarns_item_exists($permalink) != True) {
+	//if($wpdb->get_var( "SELECT COUNT(*) FROM ".$table_name." WHERE permalink LIKE \"".$permalink."\";")<1){
 		$rows_affected = $wpdb->insert( $table_name,
 			array(	
 				'feedid'=>$feedid,
@@ -791,12 +766,11 @@ function yarns_reader_add_feeditem($feedid,$title,$summary,$content,$published=0
 
 			die("could not insert post into database!" .$permalink.": ".$title);
 		}else{
-			yarns_reader_log("added ".$permalink.": ".$title);
+			//yarns_reader_log("added ".$permalink.": ".$title);
 		}
 	}else{
 		//yarns_reader_log("post already exists: " .$permalink.": ".$title);
-	}	
-
+	}	 
 }
 
 /*
@@ -1053,15 +1027,10 @@ function yarns_reader_aggregator() {
 			$items = $feed->get_items();
 			usort($items,'date_sort');
 			foreach ($items as $item){
-				//yarns_reader_log("got ".$item->get_title()." from ". $item->get_feed()->get_title()."<br/>");
 				$title = $item->get_title();
-
-
 				$summary = html_entity_decode ($item->get_description());
 				$content = html_entity_decode ($item->get_content());
-				//ORIGINAL $published=$item->get_date("U");
 				$published=$item->get_date('U');
-
 				$updated=0;
 				//Remove the title if it is equal to the post content (e.g. asides, notes, microblogs)
 				$title = clean_the_title($title,$content);
@@ -1078,12 +1047,10 @@ function yarns_reader_aggregator() {
 					yarns_reader_log("Exception occured: ".$e->getMessage());
 				}
 			}
-
 		} /****  H-FEEDS ****/ 
 		elseif ($feedtype == "h-feed"){
 			$feed = yarns_reader_fetch_hfeed($feedurl,$feedtype);
 			foreach ($feed as $item){
-				
 				$title = $item['name'];
 				$summary=$item['summary'];
 				$content=$item['content'];
@@ -1097,7 +1064,9 @@ function yarns_reader_aggregator() {
 				$photo=$item['photo'];
 				$syndication = $item['syndication'];
 				$in_reply_to = $item['in-reply-to'];
-				//$location = $item['location'];
+				
+				$authorurl = $item['author_url'];
+				$avurl = $item['avurl'];
 				
 				$siteurl=$item['siteurl'];
 				$feedurl = $url;
@@ -1120,6 +1089,29 @@ function yarns_reader_aggregator() {
 	yarns_reader_log("Aggregator finished at ". $update_time);
 	update_option( 'yarns_reader_last_updated', $update_time);
 
+	//Clean up the feed items and log databases
+	//$query = "SELECT * FROM ".$wpdb->prefix."yarns_reader_posts WHERE DATEDIFF(NOW(), `published`) > 1";
+
+	/* TESTING FEATURE - identify posts older than 30 days and delete them automatically */
+	// Currently this just logs posts older than 30 days with the heading "To be cleared"
+	// Thinking about whether to implement this auto-clearing (a) always enabled, (b) optional.
+	// Probably best as optional but enabled by default. 
+
+	$items = $wpdb->get_results(
+		'SELECT * 
+		FROM  `'.$wpdb->prefix . 'yarns_reader_posts` 
+		WHERE DATEDIFF(NOW(),`published`) >30');
+		
+	if ( !empty( $items ) ) { 
+		foreach ( $items as $item ) {
+			$item_list .= $item->published . " - " . $item->permalink ."\n";
+		}
+		yarns_reader_log("To be cleared: " . $item_list);
+	} else {
+		yarns_reader_log("To be cleared: NONE");
+	}
+
+
 	wp_die(); // this is required to terminate immediately and return a proper response
 }
 
@@ -1139,8 +1131,6 @@ function yarns_reader_fetch_feed($url,$feedtype) {
 	$feed->init();
 	$feed->handle_content_type();
 	
-	//yarns_reader_log("Feed:".print_r($feed,true));
-
 	if ( $feed->error() )
 		$errstring = implode("\n",$feed->error());
 		//if(strlen($errstring) >0){ $errstring = $feed['data']['error'];}
@@ -1158,6 +1148,7 @@ function yarns_reader_fetch_feed($url,$feedtype) {
 ** Fetch an H-FEED and return its content
 */
 function yarns_reader_fetch_hfeed($url,$feedtype) {
+	yarns_reader_log('fetching h-feed at '. $url);
 	//Parse microformats at the feed-url
 	$mf = Mf2\fetch($url);
 	//Identify the h-feed within the parsed MF2
@@ -1206,96 +1197,153 @@ function yarns_reader_fetch_hfeed($url,$feedtype) {
 	} else {
 		//yarns_reader_log("Parsing h-feed at: ".$hpath);
 		$site_url = $url;
-		$counter = 0;
-
+		
+		//Get permalinks for each item
+		$hfeed_items = array();
 		foreach ($hfeed[$hfeed_path] as $item) {
 			if ("{$item['type'][0]}" == 'h-entry' ||
 				"{$item['type'][0]}" == 'h-event' )
 			{
-			// Only parse supported types (h-entry, h-event... more to come)
-			
-			$item_name = "{$item['properties']['name'][0]}";
-			$item_type = "{$item['type'][0]}";
-			$item_summary = "{$item['properties']['summary'][0]}";
-			$item_published = strtotime("{$item['properties']['published'][0]}");
-			$item_updated = strtotime("{$item['properties']['updated'][0]}");
-			$item_location = "{$item['properties']['location'][0]['value']}";
-				//Note that location can be an h-card, but this script just gets the string value
-			$item_url = "{$item['properties']['url'][0]}";
-			$item_uid = "{$item['properties']['uid'][0]}";
-			if ("{$item['properties']['syndication']}"){
-				$syndication =  array();
-				foreach ($item['properties']['syndication'] as $syndication_item) {
-					$syndication[] = $syndication_item;		
+				if ("{$item['properties']['url'][0]}"){
+					$hfeed_item_urls[] = "{$item['properties']['url'][0]}";
 				}
-				$item_syndication = json_encode($syndication);
+				
 			}
-			//$item_syndication = json_encode("{$item['properties']['syndication']}");
-			$item_photo = "{$item['properties']['photo'][0]}";
-			$item_inreplyto = "{$item['properties']['in-reply-to'][0]}";
-			$item_author = "{$item['properties']['author'][0]}";
-
-			//handle h-entry
-			if ("{$item['type'][0]}" == "h-entry"){
-				//yarns_reader_log ("found h-entry");
-				//yarns_reader_log("{$item['properties']['url'][0]}");
-				$item_content = "{$item['properties']['content'][0]['html']}";
-				$item_content_plain = "{$item['properties']['content'][0]['value']}";
-
-				$log_entry .= "<li>item_content = ". $item_content ."</li>";
-				$log_entry .= "<li>item_content_plain = ". $item_content_plain ."</li>";
-			}
-
-			//handle h-event
-			if ("{$item['type'][0]}" == "h-event"){
-				//yarns_reader_log ("found h-event");
-				//yarns_reader_log("{$item['properties']['url'][0]}");
-
-				$item_featured = "{$item['properties']['featured'][0]}";
-				$item_content = "";
-				//When
-				//Where    //Note that location can be an h-card
-				//Host
-				//Summary
-				//Image
-			}
-
-			// Log the parsed h-feed  for debugging
-			//yarns_reader_log($log_entry);
-
-
-			//Remove the title if it is equal to the post content (e.g. asides, notes, microblogs)
-				$item_name = clean_the_title($item_name,$item_content,$item_content_plain);
-
-			$hfeed_items [] = array (
-				"name"=>$item_name,
-				"type"=>$item_type,
-				"summary"=>$item_summary,
-				"content"=>$item_content,
-				"location"=>$item_location,
-				"photo"=>$item_photo,
-				"published" =>$item_published,
-				"updated" =>$item_updated,
-				"url"=>$item_url,
-				"uid"=>$item_url,
-				"author"=>$item_author,
-				"syndication"=>$item_syndication,
-				"in-reply-to"=>$item_inreplyto,
-				"author"=>$item_author,
-				"featured"=>$item_featured,
-				"siteurl"=>$site_url
-			);
-
-			}
-
-			
 		}
 
-		//yarns_reader_log("hfeed items = " . json_decode($hfeed_items));
+		//yarns_reader_log(json_encode($hfeed_items));
+		//Fetch each post individually
+		foreach ($hfeed_item_urls as $hfeed_item_url){
+			//yarns_reader_log('following permalink at '. $hfeed_item_url);
+			// Only proceed if the permalink has not previous been fetched
+			if (yarns_item_exists($hfeed_item_url) !=True){
+				$mf = Mf2\fetch($hfeed_item_url);
+				//Fetch the full post from its permalink ONLY if it has not already been added
+				foreach ($mf['items'] as $item) {
+	  				if ("{$item['type'][0]}" == 'h-entry' ||
+						"{$item['type'][0]}" == 'h-event' )
+						// Only parse supported types (h-entry, h-event)
+					{ 
+						//yarns_reader_log("HFEED LOG: ". $hfeed_item_url . " | " ."{$item['properties']['url'][0]}" ); 
+						
+						//Only store an item_name if it is not equal to the content value
+						if ("{$item['properties']['name'][0]}" !="{$item['properties']['content'][0]['value']}" ) {
+							$item_name = "{$item['properties']['name'][0]}";
+						} else {
+							$item_name = '';
+						}
 
+						$item_type = "{$item['type'][0]}";
+						$item_summary = "{$item['properties']['summary'][0]}";
+						$item_published = strtotime("{$item['properties']['published'][0]}");
+						$item_updated = strtotime("{$item['properties']['updated'][0]}");
+
+
+						if ("{$item['properties']['location'][0]['properties']['name'][0]}"){
+							// get full location h-card
+							$location['name'] = "{$item['properties']['location'][0]['properties']['name'][0]}";
+							$location['url']  = "{$item['properties']['location'][0]['properties']['url'][0]}";
+							$location['latitude']= "{$item['properties']['location'][0]['properties']['latitude'][0]}";
+							$location['longitude']  = "{$item['properties']['location'][0]['properties']['longitude'][0]}";
+							$item_location = json_encode($location);
+
+						} else if ("{$item['properties']['location'][0]['value']}"){
+							// just get the location value
+							$location['name'] = "{$item['properties']['location'][0]['value']}";
+							$item_location = json_encode($location); 
+						}
+
+						//Note that location can be an h-card, but this script just gets the string value
+						$item_url = $hfeed_item_url;
+						$item_uid = "{$item['properties']['uid'][0]}";
+						if ("{$item['properties']['syndication']}"){
+							$syndication =  array();
+							foreach ($item['properties']['syndication'] as $syndication_item) {
+								$syndication[] = $syndication_item;		
+							}
+							$item_syndication = json_encode($syndication);
+						}
+						//$item_syndication = json_encode("{$item['properties']['syndication']}");
+
+						if ("{$item['properties']['photo']}"){
+							$photos =  array();
+							foreach ($item['properties']['photo'] as $photo_item) {
+								$photos[] = $photo_item;		
+							}
+							$item_photo = json_encode($photos);
+						} else {
+							//Clear $item_photo
+							$item_photo ='';
+						}
+
+						//Check for 'featured' property if there was no 'photo'
+						if ($item_photo == ''){
+							if ("{$item['properties']['featured']}"){
+								$photos =  array();
+								foreach ($item['properties']['featured'] as $photo_item) {
+									$photos[] = $photo_item;		
+								}
+								$item_photo = json_encode($photos);
+							}
+						}
+
+						$item_inreplyto = "{$item['properties']['in-reply-to'][0]['value']}";
+						
+						if ("{$item['properties']['author'][0]['type'][0]}" === "h-card"){
+							// get full author h-card
+							$item_author = "{$item['properties']['author'][0]['properties']['name'][0]}";
+							$item_avurl = "{$item['properties']['author'][0]['properties']['photo'][0]}";
+							$item_author_url = "{$item['properties']['author'][0]['properties']['url'][0]}";
+							
+						} else {
+							// just get the author name
+							$item_author = "{$item['properties']['author'][0]}";
+							$item_avurl = '';
+							$item_author_url = '';
+						}
+						$item_content = "{$item['properties']['content'][0]['html']}";
+
+						//handle h-entry
+						if ("{$item['type'][0]}" == "h-entry"){
+				
+						}
+
+						//handle h-event
+						if ("{$item['type'][0]}" == "h-event"){
+							
+						}
+
+						//Remove the title if it is equal to the post content (e.g. asides, notes, microblogs)
+						$item_name = clean_the_title($item_name,$item_content,$item_content_plain);
+
+						$hfeed_items [] = array (
+							"name"=>$item_name,
+							"type"=>$item_type,
+							"summary"=>$item_summary,
+							"content"=>$item_content,
+							"location"=>$item_location,
+							"photo"=>$item_photo,
+							"published" =>$item_published,
+							"updated" =>$item_updated,
+							"url"=>$item_url,
+							"uid"=>$item_url,
+							"author"=>$item_author,
+							"syndication"=>$item_syndication,
+							"in-reply-to"=>$item_inreplyto,
+							"author"=>$item_author,
+							"featured"=>$item_featured,
+							"siteurl"=>$site_url,
+							"author_url"=>$item_author_url,
+							"avurl"=>$item_avurl
+						);
+					}
+				}	
+			} else {
+				yarns_reader_log("Post has already been fetched: " . $hfeed_item_url);
+			}
+		}
 		return $hfeed_items;
 	}
-	return "h-feed found";
 }
 
 
@@ -1312,16 +1360,9 @@ function findPhotos($html){
 	$dom = new DOMDocument;
 	$dom->loadHTML($html);
 	foreach ($dom->getElementsByTagName('img') as $node) {
-		/*$src= $node->getAttribute( 'src' );
-		$alt = $node->getAttribute( 'alt' );
-		//yarns_reader_log("src = ." . $src . " | alt = " . $alt);
-		$returnArray[] = array("src"=>$src, "alt"=>$alt);		
-		*/
-		// SImplying to just return url for image
 		$returnArray[] = $node->getAttribute('src');
 	}
 	return $returnArray;
-	//yarns_reader_log(serialize($returnArray));
 } 
 
 //Log changes to the database (adding sites, fetching posts, etc.)
@@ -1339,42 +1380,55 @@ function yarns_reader_log($message){
 
 }
 
+function yarns_item_exists($permalink){
+	global $wpdb;
+	$items = $wpdb->get_results(
+		'SELECT * 
+		FROM  `'.$wpdb->prefix . 'yarns_reader_posts` 
+		ORDER BY  `id`  DESC;'  
+	);
+	if ( !empty( $items ) ) { 			
+		foreach ( $items as $item ) {
+			if ($permalink == $item->permalink) {
+				yarns_reader_log("MATCH: " . $permalink. " is same as " . $item->permalink);
+				return True;
+			}
+		}
+	} 
+	return False;
+}
+
 /* Remove titles for posts where the title is equal to the content (e.g. notes, asides, microblogs) */
 //In many rss feeds and h-feeds, the only indication of whether a title is redunant is that it duplicates 
 function clean_the_title($title,$content,$content_plain=''){
-	$clean_title = html_entity_decode($title); // First convert html entities to text (to ensure consistent comparision)
-	$clean_title = strip_tags(rtrim($clean_title,".")); // remove trailing "..."
-	$clean_title = strip_tags(trim($clean_title)); // remove white space on either side
-	$clean_title = htmlentities($clean_title, ENT_QUOTES); // Convert quotation marks to HTML entities
-	$clean_title = str_replace(array("\r", "\n"), '', $clean_title); // remove line breaks from title
-	$clean_title = str_replace("&nbsp;", "", $clean_title); // replace $nbsp; with a space character
-	$clean_title = str_replace(array("\r", "\n"), '', $clean_title); // remove line breaks from title
-	
-	$clean_content = html_entity_decode($content); // First convert html entities to text (to ensure consistent comparision)
-	$clean_content = strip_tags(rtrim($clean_content,".")); // remove trailing "..."
-	$clean_content = strip_tags(trim($clean_content)); // remove white space on either side
-	$clean_content = htmlentities($clean_content, ENT_QUOTES); // Convert quotation marks to HTML entities
-	$clean_content = str_replace("&nbsp;", "", $clean_content); // replace $nbsp; with a space character
-	$clean_content = str_replace(array("\r", "\n"), '', $clean_content); // remove line breaks from CONTENT
-	if (strpos($clean_content,$clean_title)===0 ){
-		$title="";
+	if (compare_cleaned_html($title, $content) >0 || compare_cleaned_html($title, $content_plain)>0){
+		$title = "";
 	} 
-	// Also compare to content_plain if it exists.  ($content_plain is a plain text version, whereas $content has html)
-	if ($content_plain != ''){
-		$clean_content = html_entity_decode($content_plain); // First convert html entities to text (to ensure consistent comparision)
-		$clean_content = strip_tags(rtrim($clean_content,".")); // remove trailing "..."
-		$clean_content = strip_tags(trim($clean_content)); // remove white space on either side
-		$clean_content = htmlentities($clean_content, ENT_QUOTES); // Convert quotation marks to HTML entities
-		$clean_content = str_replace("&nbsp;", "", $clean_content); // replace $nbsp; with a space character
-		$clean_content = str_replace(array("\r", "\n"), '', $clean_content); // remove line breaks from CONTENT
-		//yarns_reader_log("COMPARISON #2: plain content: [". $clean_content . "] and title: [".$clean_title."]");
-		if (strpos($clean_content,$clean_title)===0 ){
-			$title="";
-		} 
-	}
 	return $title;
 }
 
+function compare_cleaned_html($string1,$string2){
+	//$string1 = html_entity_decode($string1); // First convert html entities to text (to ensure consistent comparision)
+	$string1 = strip_tags(rtrim($string1,".")); // remove trailing "..."
+	$string1 = htmlentities($string1, ENT_QUOTES); // Convert quotation marks to HTML entities
+	$string1 = str_replace(array("\r", "\n"), '', $string1); // remove line breaks 
+	$string1 = str_replace("&nbsp;", "", $string1); // replace $nbsp; with a space character
+	$string1 = strip_tags(trim($string1)); // remove white space on either side
+	
+	//$string2 = html_entity_decode($string2); // First convert html entities to text (to ensure consistent comparision)
+	$string2 = strip_tags(rtrim($string2,".")); // remove trailing "..."
+	$string2 = htmlentities($string2, ENT_QUOTES); // Convert quotation marks to HTML entities
+	$string2 = str_replace(array("\r", "\n"), '', $string2); // remove line breaks
+	$string2 = str_replace("&nbsp;", "", $string2); // replace $nbsp; with a space character
+	$string2 = strip_tags(trim($string2)); // remove white space on either side
+	
+	if ($string1 === $string2) {
+		return 2; // 2 == full match
+	} else if (strpos($string1,$string2)===0 ) {
+		return 1; // 1 = same start	
+	} 
+	return 0; // 0 == no match
+}
 
 /* 
 ** Returns true is the feed is of type rss 
