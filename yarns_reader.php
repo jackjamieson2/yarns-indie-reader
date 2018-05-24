@@ -39,9 +39,11 @@ defined( 'ABSPATH' ) or die( 'No script kiddies please!' );
 
 
 // Require the mf2 parser only if it has not already been added by another plugin
-if ( ! class_exists( 'Mf2\Parser' ) ) {
+/*if ( ! class_exists( 'Mf2\Parser' ) ) {
     require_once plugin_dir_path( __FILE__ ) .  'lib/Mf2/Parser.php'; // For parsing h-feed
 } 
+*/
+    require_once plugin_dir_path( __FILE__ ) .  'vendor/autoload.php'; 
 
 if ( ! class_exists( 'phpUri' ) ) {
 	require_once plugin_dir_path( __FILE__ ) .  'lib/phpuri.php'; // For converting relative URIs to absolute 

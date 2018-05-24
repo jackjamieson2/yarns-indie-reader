@@ -1,0 +1,8 @@
+{
+    "require": {
+        "mf2/mf2": "*",
+		"masterminds/html5": "*",
+		"barnabywalters/mf-cleaner": "0.*"
+    }
+
+}
