@@ -1,13 +1,38 @@
 /* CSS for yarns_reader
 */
 
+
+#yarns_reader_overlay{
+	z-index:9999;
+	background:#303030;
+	position:fixed;
+	top:0;
+	left:0;
+	width:100%;
+	height:100%;
+	margin-top:32px;
+	overflow:scroll;
+}
+
+
+#yarns_reader {
+	background: white;
+	max-width: 1000px;
+	margin: 0 auto;
+	padding:1rem 0 2rem;
+}
+
 #yarns_reader_header {
-	margin-top: 1em;
+	padding: 3rem 0.5rem 0;
 }
 
 #yarns_reader_header img {
 	width: 224px;
 	height: auto;
+}
+
+.yarns_reader-controls {
+	padding:0.5rem;
 }
 #yarns_reader-feed-container {
 	display:block;
@@ -29,6 +54,7 @@
 }
 #yarns_reader-addSite-form label {
 	min-width: 10%;
+	padding:.5rem;
 }
 
 .yarns_reader-hidden {
@@ -42,7 +68,7 @@
 
 /* The 'Load more' button at the bottom of the feed */
 #yarns_reader-load-more {
-	margin: 1rem auto; 
+	margin: 1rem .5rem; 
 }
 
 #yarns_reader-last-updated {
@@ -66,7 +92,8 @@
 
 
 #yarns_reader-feed-container, #yarns_reader-subscription-list {
-	background: #eee;
+	/* background: #eee; */ /* old lighter colour */ 
+	background:#747270;
 	padding: .5rem;
 }
 
@@ -81,6 +108,10 @@
 	padding: .5rem;
 	margin: .8rem 0;
 	position:relative;
+}
+
+#yarns_reader-subscriptions h2, #yarns_reader-addSite-form {
+	padding:0.5rem;
 }
 
 #yarns_reader-subscription-list {

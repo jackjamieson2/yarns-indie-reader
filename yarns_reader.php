@@ -279,11 +279,15 @@ function yarns_reader_page_shortcode() {
 add_shortcode('yarns_indie_reader', 'yarns_reader_page_shortcode');
 
 
+
 // The Following page, visible on the front end
 function yarns_reader_page(){
 	// enqueue the reader js (which was registered previously)
 	wp_enqueue_script( 'yarns_reader_js');
-	?> <div id="yarns_reader"> 
+
+	?> 
+		<div id="yarns_reader_overlay">
+		<div id="yarns_reader"> 
 		<div id="yarns_reader_header">
 			<?php echo '<img src="'. plugins_url('images/yarns_heading.png', __FILE__ ).'" alt="Yarns Indie Reader">'; ?> 
 
@@ -321,6 +325,8 @@ function yarns_reader_page(){
   			<span id="yarns_reader-full-close" >&times;</span>
   			<div id="yarns_reader-full-content"></div>
   		</div><!--#yarns_reader-full-box-->
+  		
+  		
  
 		<?php
 
@@ -332,31 +338,33 @@ function yarns_reader_page(){
 		<div id = "yarns_reader-feed-error">Sorry, you must be logged in to view this page.</div>
 		<?php
 	}
-	?> </div><!--#yarns_reader--> <?php
+	?> </div><!--#yarns_reader--> 
+	</div><!--#yarns_reader_overlay-->
+	<?php
+
 }
 
 /* Show interface for adding/removing/editing subscriptions */
 function yarns_reader_subscription_editor(){
 	?>
 	<div id="yarns_reader-subscriptions" class="yarns_reader-hidden">
-	<div id="yarns_reader-addSite-form"  method="post" action="<?php echo str_replace( '%7E', '~', $_SERVER['REQUEST_URI']); ?>">
-		<h2>Add a subscription</h2><br>
-        <input type="text" name="yarns_reader-siteurl" value="" size="30"  placeholder = "Enter a website address to subscribe to its content."></input><br>
-        <button id="yarns_reader-addSite-findFeeds" >Find feeds</button>
-		<br><br>
-		<div id="yarns_reader-choose-feed" class="yarns_reader-hidden">
-		<form class="yarns_reader-feedpicker yarns_reader-hidden "></form>
-		<label for="yarns_reader-feedurl">Feed URL </label><input type="text" name="yarns_reader-feedurl" value="" size="30"><br>
-		<label for="yarns_reader-sitetitle">Site Title </label><input type="text" name="yarns_reader-sitetitle" value="" size="30"><br>
-		<div>Feed type:<span class="yarns_reader-feed-type"></span></div>
-		<button id="yarns_reader-addSite-submit" >Submit</button>
-		</div><!--#yarns_reader-choose-feed-->
-	</div>
+			<h2>Add a subscription</h2><br>
+			<div id="yarns_reader-addSite-form"  method="post" action="<?php echo str_replace( '%7E', '~', $_SERVER['REQUEST_URI']); ?>">
+		        <input type="text" name="yarns_reader-siteurl" value="" size="30"  placeholder = "Enter a website address to subscribe to its content."></input><br>
+		        <button id="yarns_reader-addSite-findFeeds" >Find feeds</button>
+				<br><br>
+				<div id="yarns_reader-choose-feed" class="yarns_reader-hidden">
+				<form class="yarns_reader-feedpicker yarns_reader-hidden "></form>
+				<label for="yarns_reader-feedurl">Feed URL </label><input type="text" name="yarns_reader-feedurl" value="" size="30"><br>
+				<label for="yarns_reader-sitetitle">Site Title </label><input type="text" name="yarns_reader-sitetitle" value="" size="30"><br>
+				<div>Feed type:<span class="yarns_reader-feed-type"></span></div>
+				<button id="yarns_reader-addSite-submit" >Submit</button>
+				</div><!--#yarns_reader-choose-feed-->
+			</div>
 
-	<h2> Manage subscriptions </h2><br>
-	<div id="yarns_reader-subscription-list">
-	</div><!--#yarns_reader-subscription-list-->
-	
+			<h2> Subscriptions </h2><br>
+			<div id="yarns_reader-subscription-list">
+			</div><!--#yarns_reader-subscription-list-->
 	</div><!--#yarns_reader-subscriptions-->
 	<?php
 }
