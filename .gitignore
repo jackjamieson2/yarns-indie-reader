@@ -7,6 +7,8 @@ vendor/*
 /vendor/mf2/mf2/*
 !/vendor/mf2/mf2/Mf2
 !/vendor/mf2/mf2/LICENSE.md
+!/vendor/barnabywalters
+/vendor/barnabywalters/test
 !/vendor/masterminds
 /vendor/masterminds/html5/*
 !/vendor/masterminds/html5/src
