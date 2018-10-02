@@ -43,7 +43,10 @@ defined( 'ABSPATH' ) or die( 'No script kiddies please!' );
     require_once plugin_dir_path( __FILE__ ) .  'lib/Mf2/Parser.php'; // For parsing h-feed
 } 
 */
+
+if ( ! class_exists( 'Mf2\Parser' ) ) {
     require_once plugin_dir_path( __FILE__ ) .  'vendor/autoload.php'; 
+}
 
 if ( ! class_exists( 'phpUri' ) ) {
 	require_once plugin_dir_path( __FILE__ ) .  'lib/phpuri.php'; // For converting relative URIs to absolute 
@@ -787,7 +790,8 @@ function yarns_reader_add_feeditem($feedid,$title,$summary,$content,$published=0
 ** Add a new subscription
 */ 
 add_action( 'wp_ajax_yarns_reader_new_subscription', 'yarns_reader_new_subscription' );
-function yarns_reader_new_subscription($siteurl, $feedurl, $sitetitle, $feedtype){
+//function yarns_reader_new_subscription($siteurl, $feedurl, $sitetitle, $feedtype){
+function yarns_reader_new_subscription(){
 	$siteurl = $_POST['siteurl'];
 	$feedurl = $_POST['feedurl'];
 	$sitetitle = $_POST['sitetitle'];
