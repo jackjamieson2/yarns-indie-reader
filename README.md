@@ -1,5 +1,8 @@
 # Yarns Indie Reader
 
+*Please note: Yarns Indie Reader is no longer in development. Instead, I am focusing on its successor [Yarns Microsub Server](https://github.com/jackjamieson2/yarns-microsub-server).*
+---
+
 Yarns Indie Reader is an RSS and [h-feed](https://indieweb.org/h-feed) reader for WordPress. You can subscribe to blogs and websites, view their updates in a feed, then post likes and replies directly to your WordPress site. 
 
 Yarns Indie Reader allows you to subscribe to websites that publish either rss or [h-feed](https://indieweb.org/h-feed). As well as keeping up with your subscriptions, you can like and reply and it create posts on your blog automatically.
